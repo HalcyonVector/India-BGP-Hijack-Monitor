@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>India BGP Hijack/Leak Monitor</title>
+<style>
+  :root {
+    --page:        #0d0d0d;
+    --surface:     #1a1a19;
+    --surface-2:   #212120;
+    --ink:         #ffffff;
+    --ink-2:       #c3c2b7;
+    --ink-muted:   #898781;
+    --border:      rgba(255,255,255,0.10);
+    --border-hi:   rgba(255,255,255,0.18);
+    --accent:      #199e70;
+    --accent-wash: rgba(25,158,112,0.12);
+    --good:        #0ca30c;
+    --warning:     #fab219;
+    --critical:    #d03b3b;
+    --radius:      10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--ink-2);
+    margin: 0;
+    padding: 40px clamp(20px, 5vw, 56px) 64px;
+    line-height: 1.45;
+  }
+
+  header { margin-bottom: 36px; text-align: center; }
+  h1 {
+    font-size: 22px;
+    font-weight: 650;
+    color: var(--ink);
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle { color: var(--ink-muted); font-size: 13.5px; }
+  .subtitle b { color: var(--ink-2); font-weight: 600; }
+
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--ink-muted);
+  }
+  .live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted); }
+  .live-badge.live { color: var(--accent); border-color: rgba(25,158,112,0.35); background: var(--accent-wash); }
+  .live-badge.live::before { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-wash); }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 12px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .rule { flex: 1; height: 1px; background: var(--border); }
+
+  /* Stat tiles */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 760px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color 120ms ease;
+  }
+  .stat-tile:hover { border-color: var(--border-hi); }
+  .stat-tile .value {
+    font-size: 30px;
+    font-weight: 650;
+    color: var(--ink);
+    font-variant-numeric: proportional-nums;
+    line-height: 1.1;
+  }
+  .stat-tile .label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .stat-tile.accent .value { color: var(--accent); }
+  .stat-tile.critical .value { color: var(--critical); }
+
+  /* ASN grid — fixed 3-column, equal-height cards, deliberate not "random" */
+  .asn-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 900px) { .asn-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .asn-grid { grid-template-columns: 1fr; } }
+
+  .asn-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 84px;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .asn-card:hover { border-color: var(--border-hi); background: var(--surface-2); }
+  .asn-card .asn-id {
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--accent);
+    letter-spacing: 0.03em;
+  }
+  .asn-card .asn-name { font-size: 13.5px; color: var(--ink); font-weight: 500; }
+  .asn-card .asn-count { font-size: 12px; color: var(--ink-muted); margin-top: auto; }
+
+  /* Events section */
+  .events-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  select, button {
+    background: var(--surface);
+    color: var(--ink-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  select:hover, button:hover { border-color: var(--border-hi); background: var(--surface-2); }
+  button { color: var(--ink); font-weight: 500; }
+  button:active { background: var(--accent-wash); border-color: var(--accent); }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  td { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  th {
+    color: var(--ink-muted);
+    font-weight: 600;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface-2); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .badge.critical { color: var(--critical); }
+  .badge.critical::before { background: var(--critical); }
+  .badge.warning { color: var(--warning); }
+  .badge.warning::before { background: var(--warning); }
+  .badge.info { color: var(--ink-muted); }
+  .badge.info::before { background: var(--ink-muted); }
+
+  .empty {
+    padding: 32px 20px;
+    color: var(--ink-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+  .empty code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>India BGP Hijack/Leak Monitor</h1>
+  <div class="subtitle">Live-monitored: <b>Airtel · Jio · BSNL · ACT Fibernet · Vodafone Idea · Tata Communications · Sify · RailTel</b> — via RIPE RIS Live (free)</div>
+  <div class="live-badge" id="liveBadge">checking…</div>
+</header>
+
+<section>
+  <h2>Overview<span class="rule"></span></h2>
+  <div class="stat-grid" id="statGrid"></div>
+</section>
+
+<section>
+  <h2>Tracked ASNs<span class="rule"></span></h2>
+  <div class="asn-grid" id="asnGrid"></div>
+</section>
+
+<section>
+  <h2>Recent Events<span class="rule"></span></h2>
+  <div class="events-toolbar">
+    <select id="sevFilter">
+      <option value="">All severities</option>
+      <option value="critical">Critical</option>
+      <option value="warning">Warning</option>
+      <option value="info">Info</option>
+    </select>
+    <button onclick="loadEvents()">Refresh</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Time</th><th>Severity</th><th>Type</th><th>Prefix</th><th>Expected ASN</th><th>Observed ASN</th><th>RPKI</th></tr>
+      </thead>
+      <tbody id="eventsBody"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty" style="display:none;">
+      No events yet — this is expected between live monitor runs. Run
+      <code>python backend/detector/monitor.py</code> to watch live, or
+      <code>python backend/detector/test_detection_logic.py</code> to see the
+      detection logic verified against fabricated fixtures.
+    </div>
+  </div>
+</section>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+function compactNumber(n) {
+  return n.toLocaleString();
+}
+
+async function loadStatus() {
+  const s = await (await fetch(`${API}/api/status`)).json();
+
+  const badge = document.getElementById('liveBadge');
+  const secondsSinceLastMessage = s.last_message_at ? (Date.now() / 1000 - s.last_message_at) : null;
+  const isLive = secondsSinceLastMessage !== null && secondsSinceLastMessage < 120;
+  badge.textContent = isLive ? 'Live — receiving BGP updates' : 'Not currently running';
+  badge.className = 'live-badge' + (isLive ? ' live' : '');
+
+  const tiles = [
+    { value: compactNumber(s.baseline_prefix_count), label: 'Baseline prefixes' },
+    { value: s.tracked_asn_count, label: 'Tracked ASNs' },
+    { value: compactNumber(s.messages_seen ?? 0), label: 'Messages processed', cls: 'accent' },
+    { value: s.total_events, label: 'Events flagged', cls: s.total_events > 0 ? 'critical' : '' },
+  ];
+  document.getElementById('statGrid').innerHTML = tiles.map(t => `
+    <div class="stat-tile ${t.cls || ''}">
+      <div class="value">${t.value}</div>
+      <div class="label">${t.label}</div>
+    </div>
+  `).join('');
+}
+
+async function loadAsns() {
+  const asns = await (await fetch(`${API}/api/asns`)).json();
+  document.getElementById('asnGrid').innerHTML = asns.map(a => `
+    <div class="asn-card">
+      <div class="asn-id">AS${a.asn}</div>
+      <div class="asn-name">${a.name}</div>
+      <div class="asn-count">${compactNumber(a.baseline_prefix_count)} baseline prefixes</div>
+    </div>
+  `).join('');
+}
+
+async function loadEvents() {
+  const sev = document.getElementById('sevFilter').value;
+  const url = sev ? `${API}/api/events?severity=${sev}` : `${API}/api/events`;
+  const events = await (await fetch(url)).json();
+  const body = document.getElementById('eventsBody');
+  document.getElementById('emptyMsg').style.display = events.length ? 'none' : 'block';
+  body.innerHTML = events.map(e => `
+    <tr>
+      <td>${new Date(e.timestamp * 1000).toLocaleString()}</td>
+      <td><span class="badge ${e.severity}">${e.severity}</span></td>
+      <td>${e.event_type}</td>
+      <td>${e.prefix}</td>
+      <td>AS${e.expected_asn}</td>
+      <td>AS${e.observed_origin_asn ?? '?'}</td>
+      <td>${e.rpki_status ?? '—'}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('sevFilter').addEventListener('change', loadEvents);
+loadStatus(); loadAsns(); loadEvents();
+setInterval(() => { loadStatus(); loadEvents(); }, 15000);
+</script>
+</body>
+</html>

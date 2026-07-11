@@ -280,7 +280,9 @@ Full list in [docs/limitations.md](docs/limitations.md):
 
 ## Author
 
-Independent project — no personal attribution.
+**Sagnik**
+
+GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
 

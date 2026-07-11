@@ -71,3 +71,17 @@
   boot if it's empty; accumulated event history and RPKI coverage samples
   do not self-heal and would need `rpki_coverage.py` re-run manually after
   a redeploy.
+- **The live deployment intermittently 404s on real endpoints** — confirmed
+  live at https://india-bgp-hijack-monitor.onrender.com on 2026-07-11:
+  1 of 6 rapid requests to `/api/asns` returned 404 despite the route being
+  correctly registered (confirmed via `/openapi.json`); a different request
+  to `/api/events` also 404'd once and then succeeded on retry. The
+  failures rotate across different endpoints rather than one being broken,
+  and every failure self-resolved on the next request. Most likely cause:
+  the free tier's limited shared CPU under contention between the request-
+  handling event loop and the monitor's background WebSocket thread
+  (`RUN_MONITOR_INLINE=1`) — not a routing or code bug. The dashboard's
+  15-second polling naturally retries and recovers from this; a hard
+  refresh always works. If this matters for your use case, moving the
+  monitor to a separate paid worker (decoupling it from request handling)
+  would remove the contention, but that's out of scope for a free deploy.

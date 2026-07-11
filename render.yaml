@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: india-bgp-hijack-monitor
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn backend.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/status
+    envVars:
+      - key: RUN_MONITOR_INLINE
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"

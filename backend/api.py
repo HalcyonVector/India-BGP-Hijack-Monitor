@@ -1,15 +1,25 @@
 """
 Read-only FastAPI backend serving events/baseline/status from SQLite to the
 frontend dashboard. Run: uvicorn backend.api:app --reload --port 8000
+
+Local dev keeps the monitor as a separate process (see README). A single
+free hosting tier (e.g. Render's free Web Service) only gives you one
+long-running process, so set RUN_MONITOR_INLINE=1 to have this API process
+also start the live monitor as a background thread on boot -- see
+docs/deployment.md.
 """
+import os
 import sys
+import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.detector.baseline import build_baseline
 from backend.detector.baseline_drift import compute_drift
+from backend.detector.monitor import run_monitor
 from backend.detector.targets import TRACKED_ASNS
 from db import store
 
@@ -20,6 +30,22 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def maybe_start_inline_monitor():
+    store.init_db()
+    conn = store.get_connection()
+    baseline_count = conn.execute("SELECT COUNT(*) c FROM baseline_prefixes").fetchone()["c"]
+    conn.close()
+    if baseline_count == 0:
+        print("No baseline found on boot -- building one now (first deploy only)...")
+        build_baseline()
+
+    if os.environ.get("RUN_MONITOR_INLINE") == "1":
+        print("RUN_MONITOR_INLINE=1: starting the live monitor in a background thread...")
+        thread = threading.Thread(target=run_monitor, kwargs={"max_seconds": None}, daemon=True)
+        thread.start()
 
 
 @app.get("/api/asns")

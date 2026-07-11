@@ -274,7 +274,14 @@
 </section>
 
 <script>
-const API = 'http://127.0.0.1:8000';
+// Local dev (localhost/127.0.0.1) talks to the local API. Anywhere else
+// (e.g. served from GitHub Pages) talks to the deployed Render API --
+// replace the placeholder below with your actual Render URL after deploying
+// the backend. See docs/deployment.md.
+const DEPLOYED_API_URL = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
+const API = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? 'http://127.0.0.1:8000'
+  : DEPLOYED_API_URL;
 
 function compactNumber(n) {
   return n.toLocaleString();

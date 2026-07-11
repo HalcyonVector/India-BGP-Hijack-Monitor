@@ -100,6 +100,16 @@ python -m http.server 8090 --directory frontend   # then open http://localhost:8
 
 ---
 
+## Deployment
+
+Free, live deployment: Render (backend) + GitHub Pages (frontend). Full
+step-by-step guide in [docs/deployment.md](docs/deployment.md) — includes
+why Vercel doesn't fit this app's requirements (persistent WebSocket +
+SQLite), the `render.yaml` Blueprint config, and the free-tier sleep
+workaround.
+
+---
+
 ## How Detection Works
 
 1. **Baseline** — fetch each tracked ASN's currently-announced prefixes from RIPEstat.
@@ -117,13 +127,16 @@ India-BGP-Hijack-Monitor/
 ├── LICENSE
 ├── requirements.txt
 ├── .gitignore
+├── render.yaml                            # Render Blueprint: single free web service
 ├── run_monitor.bat                        # Restart-on-crash wrapper for a persistent monitor
 ├── .github/workflows/
 │   ├── test.yml                           # CI: runs detection tests on push
-│   └── refresh-baseline.yml               # CI: daily baseline rebuild + summary commit
+│   ├── refresh-baseline.yml               # CI: daily baseline rebuild + summary commit
+│   └── refresh-rpki-coverage.yml          # CI: weekly RPKI coverage resample + commit
 │
 ├── backend/
 │   ├── api.py                             # FastAPI: status, asns, events, baseline-drift
+│   │                                       #   (+ optional inline monitor thread for deploy)
 │   └── detector/
 │       ├── targets.py                     # 9 tracked Indian ASNs
 │       ├── baseline.py                    # Fetches announced prefixes per ASN
@@ -137,11 +150,12 @@ India-BGP-Hijack-Monitor/
 │   └── store.py
 │
 ├── frontend/
-│   └── index.html
+│   └── index.html                         # Deploy-aware API URL (localhost vs. Render)
 │
 └── docs/
     ├── limitations.md
-    ├── scheduling.md                      # Running the monitor as a background service
+    ├── scheduling.md                      # Running the monitor as a Windows background service
+    ├── deployment.md                      # Render + GitHub Pages deployment guide
     ├── baseline-summary.json              # Committed daily by refresh-baseline.yml
     └── rpki-coverage-summary.json         # Committed weekly by refresh-rpki-coverage.yml
 ```

@@ -58,3 +58,16 @@
   event-flagging branch. Fixed in `backend/detector/monitor.py`; caught by
   actually checking the dashboard against the DB, not by assuming the code
   was correct because it looked right.
+- **The free Render deployment sleeps after 15 minutes of no HTTP traffic**,
+  which kills the monitor's WebSocket connection too, since it runs inside
+  the same process (`RUN_MONITOR_INLINE=1`, see `docs/deployment.md`). The
+  documented workaround is a free external uptime pinger (UptimeRobot /
+  cron-job.org) hitting `/api/status` every 10-14 minutes — a real
+  mitigation, not a guarantee of continuous uptime. Genuine 24/7 uptime
+  needs a paid tier, which is out of scope for this project.
+- **Render's free tier has no persistent disk add-on**, so every redeploy
+  gets a fresh filesystem — the SQLite DB (baseline, events, RPKI coverage)
+  resets on redeploy. The API self-heals the baseline automatically on
+  boot if it's empty; accumulated event history and RPKI coverage samples
+  do not self-heal and would need `rpki_coverage.py` re-run manually after
+  a redeploy.

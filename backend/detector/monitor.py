@@ -28,6 +28,7 @@ from db import store
 
 RIS_WS_URL = "wss://ris-live.ripe.net/v1/ws/?client=cce-bgp-hijack-monitor"
 RPKI_URL = "https://stat.ripe.net/data/rpki-validation/data.json"
+AS_OVERVIEW_URL = "https://stat.ripe.net/data/as-overview/data.json"
 
 
 def origin_asn_from_path(path):
@@ -83,6 +84,21 @@ def check_rpki(asn, prefix):
         return None
 
 
+def lookup_asn_org(asn):
+    """
+    Holder name for an ASN, e.g. 'VIL-AS-AP - Vodafone Idea Ltd'. Only
+    called when an event is actually flagged (rare), so one extra RIPEstat
+    call per event is negligible -- this is what turns 'observed AS99999'
+    into something a human can judge as plausible or not.
+    """
+    try:
+        resp = requests.get(AS_OVERVIEW_URL, params={"resource": f"AS{asn}"}, timeout=10)
+        resp.raise_for_status()
+        return resp.json().get("data", {}).get("holder")
+    except requests.RequestException:
+        return None
+
+
 def subscription_targets(conn, n_per_asn=8):
     targets = []
     for asn in TRACKED_ASNS:
@@ -127,11 +143,13 @@ def run_monitor(max_messages=None, max_seconds=None):
 
             event_type = "unexpected_more_specific" if match_kind == "covering" else "origin_mismatch"
             rpki_status = check_rpki(origin, prefix_str) if origin else None
+            observed_org = lookup_asn_org(origin) if origin else None
             severity = "critical" if rpki_status == "invalid" else "warning"
 
             store.insert_event(
                 conn, event_type=event_type, prefix=prefix_str,
                 expected_asn=expected_asn, observed_origin_asn=origin,
+                observed_origin_org=observed_org,
                 as_path=json.dumps(data.get("path")), rpki_status=rpki_status,
                 peer=data.get("peer"), raw_message=json.dumps(data),
                 severity=severity, timestamp=data.get("timestamp"),
@@ -139,7 +157,7 @@ def run_monitor(max_messages=None, max_seconds=None):
             conn.commit()
             state["events"] += 1
             print(f"  [{severity.upper()}] {prefix_str}: expected AS{expected_asn}, "
-                  f"observed AS{origin} (rpki={rpki_status})")
+                  f"observed AS{origin} ({observed_org}) (rpki={rpki_status})")
 
         if max_messages and state["count"] >= max_messages:
             ws.close()

@@ -53,14 +53,14 @@ def top_prefixes_by_asn(conn, asn, n=8):
 
 
 def insert_event(conn, event_type, prefix, expected_asn, observed_origin_asn=None,
-                  as_path=None, rpki_status=None, peer=None, raw_message=None,
-                  severity="info", timestamp=None):
+                  observed_origin_org=None, as_path=None, rpki_status=None, peer=None,
+                  raw_message=None, severity="info", timestamp=None):
     conn.execute(
         "INSERT INTO events (timestamp, event_type, prefix, observed_origin_asn, "
-        "expected_asn, as_path, rpki_status, peer, raw_message, severity) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (timestamp or time.time(), event_type, prefix, observed_origin_asn, expected_asn,
-         as_path, rpki_status, peer, raw_message, severity),
+        "observed_origin_org, expected_asn, as_path, rpki_status, peer, raw_message, severity) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (timestamp or time.time(), event_type, prefix, observed_origin_asn, observed_origin_org,
+         expected_asn, as_path, rpki_status, peer, raw_message, severity),
     )
 
 

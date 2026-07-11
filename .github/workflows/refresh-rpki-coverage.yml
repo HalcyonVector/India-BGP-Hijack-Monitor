@@ -1,0 +1,61 @@
+name: Weekly RPKI coverage refresh
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"   # 04:00 UTC every Monday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python db/store.py
+
+      - name: Build baseline (rpki_coverage.py samples from it)
+        run: python backend/detector/baseline.py
+
+      - name: "Sample RPKI coverage per ASN (~5 min, rate-limited)"
+        run: python backend/detector/rpki_coverage.py
+
+      - name: Write a committable summary
+        run: |
+          python - <<'PY'
+          import json, sqlite3, time
+          conn = sqlite3.connect("db/bgp_monitor.db")
+          conn.row_factory = sqlite3.Row
+          rows = conn.execute("SELECT * FROM rpki_coverage ORDER BY asn").fetchall()
+          summary = {
+              "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "per_asn": {
+                  str(r["asn"]): {
+                      "sample_size": r["sample_size"],
+                      "covered_count": r["covered_count"],
+                      "covered_pct": round(r["covered_count"] / r["sample_size"] * 100, 1)
+                      if r["sample_size"] else None,
+                  }
+                  for r in rows
+              },
+          }
+          with open("docs/rpki-coverage-summary.json", "w") as f:
+              json.dump(summary, f, indent=2)
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Commit updated RPKI coverage summary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/rpki-coverage-summary.json
+          git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh RPKI coverage summary"
+          git push

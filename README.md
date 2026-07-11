@@ -18,6 +18,8 @@ Educational/portfolio project, not a production security tool. Detection coverag
 - Baseline comparison: each tracked ASN's currently-announced prefixes (RIPEstat) act as ground truth; a live announcement by a different origin ASN gets flagged
 - More-specific detection: `moreSpecific: true` subscriptions catch a /24 hijacked out of a normally /16 block, not just exact-prefix mismatches
 - RPKI cross-check on every flagged event where a ROA exists; an explicit "invalid" result escalates severity to critical
+- Observed hijacker ASN is resolved to its holder org name (RIPEstat as-overview) on every event, not left as a bare number
+- `baseline_drift.py` / `/api/baseline-drift` reads the git history of the daily-committed baseline summary and reports real per-ASN prefix count changes over time
 
 ### Backend & API
 
@@ -39,7 +41,8 @@ Educational/portfolio project, not a production security tool. Detection coverag
 ### Automation
 
 - `.github/workflows/test.yml` — CI runs the detection-logic tests on every push
-- `.github/workflows/refresh-baseline.yml` — daily cron job rebuilds the baseline against live RIPEstat, re-runs the tests against it, and commits a summary (`docs/baseline-summary.json`) back to the repo, all on free GitHub Actions minutes
+- `.github/workflows/refresh-baseline.yml` — daily cron job rebuilds the baseline against live RIPEstat, re-runs the tests against it, and commits a summary (`docs/baseline-summary.json`) back to the repo
+- `.github/workflows/refresh-rpki-coverage.yml` — weekly cron job re-samples RPKI coverage and commits `docs/rpki-coverage-summary.json`
 - `run_monitor.bat` — restart-on-crash wrapper so the monitor can run as a persistent Windows background service (see `docs/scheduling.md`) instead of only during a manual demo session
 
 ### Verification
@@ -120,12 +123,13 @@ India-BGP-Hijack-Monitor/
 │   └── refresh-baseline.yml               # CI: daily baseline rebuild + summary commit
 │
 ├── backend/
-│   ├── api.py                             # FastAPI: /api/status, /api/asns, /api/events
+│   ├── api.py                             # FastAPI: status, asns, events, baseline-drift
 │   └── detector/
 │       ├── targets.py                     # 9 tracked Indian ASNs
 │       ├── baseline.py                    # Fetches announced prefixes per ASN
 │       ├── monitor.py                     # RIS Live listener, flags origin mismatches
 │       ├── rpki_coverage.py               # Sample-based RPKI ROA coverage per ASN
+│       ├── baseline_drift.py              # Per-ASN prefix drift from git history
 │       └── test_detection_logic.py        # Unit tests against fabricated fixtures
 │
 ├── db/
@@ -138,7 +142,8 @@ India-BGP-Hijack-Monitor/
 └── docs/
     ├── limitations.md
     ├── scheduling.md                      # Running the monitor as a background service
-    └── baseline-summary.json              # Committed by refresh-baseline.yml
+    ├── baseline-summary.json              # Committed daily by refresh-baseline.yml
+    └── rpki-coverage-summary.json         # Committed weekly by refresh-rpki-coverage.yml
 ```
 
 ---
@@ -148,8 +153,9 @@ India-BGP-Hijack-Monitor/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/status` | Messages processed, total events, baseline size, tracked ASN count, last message time |
-| GET | `/api/asns` | Tracked ASNs with per-ASN baseline prefix counts |
+| GET | `/api/asns` | Tracked ASNs with per-ASN baseline prefix counts and RPKI coverage |
 | GET | `/api/events` | Recent events, optional `?severity=` and `?limit=` (default 50, max 500) |
+| GET | `/api/baseline-drift` | Per-ASN prefix count drift between the oldest and newest committed baseline summary |
 
 ---
 
@@ -197,6 +203,7 @@ No environment variables or API keys. `backend/detector/targets.py` holds the tr
 | RIPE RIS Live | Real-time BGP stream | No | Live BGP UPDATE messages, server-side prefix filtering |
 | RIPEstat announced-prefixes | Baseline | No | Currently-announced prefixes per ASN |
 | RIPEstat rpki-validation | Corroboration | No | ROA validation status (valid/invalid/unknown) |
+| RIPEstat as-overview | Attribution | No | Holder org name for an ASN (used to name the observed hijacker) |
 
 ---
 
@@ -218,6 +225,7 @@ python backend/detector/test_detection_logic.py
 | Build baseline | `python backend/detector/baseline.py` | Fetch current announced prefixes |
 | Run tests | `python backend/detector/test_detection_logic.py` | Verify detection logic |
 | RPKI coverage | `python backend/detector/rpki_coverage.py` | Sample RPKI ROA coverage per ASN (~5 min) |
+| Baseline drift | `python backend/detector/baseline_drift.py` | Per-ASN prefix count drift from git history |
 | Live monitor (timed) | `python backend/detector/monitor.py --max-seconds 60` | Watch real BGP traffic for 60s |
 | Live monitor (persistent) | `run_monitor.bat` | Run indefinitely with auto-restart (see `docs/scheduling.md`) |
 | Backend | `python -m uvicorn backend.api:app --port 8000` | Start the API server |

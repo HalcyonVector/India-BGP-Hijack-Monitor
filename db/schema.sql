@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_type TEXT NOT NULL,       -- 'origin_mismatch' | 'unexpected_more_specific'
     prefix TEXT NOT NULL,
     observed_origin_asn INTEGER,
+    observed_origin_org TEXT,       -- holder name of the observed ASN (RIPEstat as-overview)
     expected_asn INTEGER NOT NULL,
     as_path TEXT,                   -- JSON-encoded full AS path
     rpki_status TEXT,               -- 'valid' | 'invalid' | 'unknown' | NULL (not checked)

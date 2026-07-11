@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.detector.baseline_drift import compute_drift
 from backend.detector.targets import TRACKED_ASNS
 from db import store
 
@@ -58,6 +59,17 @@ def list_events(limit: int = Query(50, le=500), severity: str | None = None):
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+@app.get("/api/baseline-drift")
+def baseline_drift():
+    """Per-ASN prefix count drift between the oldest and newest committed
+    docs/baseline-summary.json snapshots. Needs 2+ daily CI commits to show
+    real data; reports that plainly rather than fabricating a trend."""
+    try:
+        return compute_drift()
+    except RuntimeError as e:
+        return {"status": "error", "message": str(e)}
 
 
 @app.get("/api/status")

@@ -136,6 +136,9 @@
   }
   .asn-card .asn-name { font-size: 13.5px; color: var(--ink); font-weight: 500; }
   .asn-card .asn-count { font-size: 12px; color: var(--ink-muted); margin-top: auto; }
+  .asn-card .asn-rpki { font-size: 11.5px; color: var(--ink-2); }
+  .asn-card .asn-rpki-note { color: var(--ink-muted); }
+  .asn-card .asn-rpki-none { color: var(--ink-muted); font-style: italic; }
 
   /* Events section */
   .events-toolbar {
@@ -291,13 +294,21 @@ async function loadStatus() {
 
 async function loadAsns() {
   const asns = await (await fetch(`${API}/api/asns`)).json();
-  document.getElementById('asnGrid').innerHTML = asns.map(a => `
+  document.getElementById('asnGrid').innerHTML = asns.map(a => {
+    const hasRpki = a.rpki_sample_size !== null && a.rpki_sample_size > 0;
+    const pct = hasRpki ? Math.round((a.rpki_covered_count / a.rpki_sample_size) * 100) : null;
+    const rpkiLine = hasRpki
+      ? `<div class="asn-rpki">${pct}% ROA-covered <span class="asn-rpki-note">(sample of ${a.rpki_sample_size})</span></div>`
+      : `<div class="asn-rpki asn-rpki-none">RPKI coverage not yet sampled</div>`;
+    return `
     <div class="asn-card">
       <div class="asn-id">AS${a.asn}</div>
       <div class="asn-name">${a.name}</div>
       <div class="asn-count">${compactNumber(a.baseline_prefix_count)} baseline prefixes</div>
+      ${rpkiLine}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 async function loadEvents() {

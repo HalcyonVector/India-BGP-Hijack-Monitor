@@ -74,6 +74,20 @@ def touch_monitor_status(conn, messages_delta=1):
     )
 
 
+def set_rpki_coverage(conn, asn, sample_size, covered_count):
+    conn.execute(
+        "INSERT OR REPLACE INTO rpki_coverage (asn, sample_size, covered_count, checked_at) "
+        "VALUES (?, ?, ?, ?)",
+        (asn, sample_size, covered_count, int(time.time())),
+    )
+
+
+def get_rpki_coverage(conn):
+    """Return {asn: {'sample_size', 'covered_count', 'checked_at'}}."""
+    rows = conn.execute("SELECT * FROM rpki_coverage").fetchall()
+    return {row["asn"]: dict(row) for row in rows}
+
+
 if __name__ == "__main__":
     init_db()
     print(f"Initialized schema at {DB_PATH}")

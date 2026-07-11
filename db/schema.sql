@@ -31,3 +31,13 @@ CREATE TABLE IF NOT EXISTS monitor_status (
     messages_seen INTEGER NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO monitor_status (id, messages_seen) VALUES (1, 0);
+
+-- Sample-based RPKI ROA coverage per ASN. Checking all ~20k baseline
+-- prefixes individually isn't practical (thousands of RIPEstat calls), so
+-- this stores a periodically-refreshed sample result instead.
+CREATE TABLE IF NOT EXISTS rpki_coverage (
+    asn INTEGER PRIMARY KEY,
+    sample_size INTEGER NOT NULL,
+    covered_count INTEGER NOT NULL,   -- status in ('valid','invalid'), i.e. a ROA exists
+    checked_at INTEGER NOT NULL
+);

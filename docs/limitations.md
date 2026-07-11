@@ -15,11 +15,17 @@
   so path-based filtering would silently miss real hijacks. This monitor
   filters by prefix instead, which correctly surfaces an announcement of
   your address space regardless of who originates it.
-- **RPKI coverage is inconsistent for Indian address space.** Spot-checked
-  live: some Airtel blocks return RPKI status "unknown" (no ROA published),
-  not "valid" or "invalid" — meaning RPKI can corroborate a hijack when a
-  ROA exists, but can't be relied on alone. Detection here is baseline
-  (origin-ASN) comparison first, RPKI second.
+- **RPKI coverage is inconsistent for Indian address space, and varies
+  sharply by ASN.** `rpki_coverage.py` sampled 30 baseline prefixes per
+  tracked ASN and found real coverage from **40%** (Bharti Airtel Ltd's
+  primary block, AS24560) up to **100%** (Jio, BSNL, ACT Fibernet, Tata
+  Communications) — confirmed live, not estimated. This means RPKI can
+  strongly corroborate a hijack for some ASNs and barely help for others.
+  Detection here is baseline (origin-ASN) comparison first, RPKI second.
+  The coverage number itself is a 30-prefix sample per ASN, not exhaustive
+  (checking all ~20k baseline prefixes would mean thousands of RIPEstat
+  calls) — shown as "(sample of N)" on the dashboard rather than presented
+  as a precise figure.
 - **Verified precision, not recall, against real live traffic.** A 60-second
   live run against real BGP traffic processed 59 real messages and flagged
   zero false positives — confirms the detector doesn't cry wolf on normal
@@ -28,17 +34,23 @@
   hijack when one happens) is verified via 5 unit tests against fabricated
   fixtures (`backend/detector/test_detection_logic.py`), not a real
   incident. Be precise about this distinction if presenting the project.
-- **Baseline goes stale without re-running `baseline.py`.** ISPs add and
-  retire prefixes over time; a stale baseline will eventually flag
-  legitimate new announcements as false positives, or miss retired-prefix
-  hijacks. Re-run periodically (daily is reasonable) — not automated yet.
+- **Baseline staleness is now partially, not fully, automated.**
+  `.github/workflows/refresh-baseline.yml` rebuilds the baseline daily in
+  CI and commits a summary (`docs/baseline-summary.json`), which keeps the
+  *repo* honest about current counts and catches RIPEstat API breakage
+  early. It does NOT update your own locally-running instance's SQLite DB
+  — that still needs a manual `baseline.py` re-run (or your own scheduled
+  task) to stay current for live detection.
 - **No outbound alerting.** Events are written to SQLite and shown on the
   dashboard; there's no email/webhook/SMS alert. Deliberately out of scope
   — sending messages on your behalf needs explicit permission each time,
   and isn't needed for a demo/portfolio project.
-- **Single point of collection.** The monitor runs on one machine; if it's
-  off, nothing is being watched. A production tool would run redundant
-  collectors. Fine for a demo, worth naming explicitly as a gap.
+- **Single point of collection, though it can now persist.**
+  `run_monitor.bat` + Windows Task Scheduler (`docs/scheduling.md`) lets
+  the monitor auto-restart and run continuously instead of only during a
+  manual session, which is what makes the dashboard's "Live" badge mean
+  something over time. It's still one machine with no redundant
+  collectors — if that machine is off, nothing is being watched.
 - **`monitor_status` (messages-processed counter) requires a commit after
   every message, not just ones that flag an event** — this was a real bug
   found during verification: the counter silently stayed at 0 after a real

@@ -1,0 +1,56 @@
+name: Daily baseline refresh
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily
+  workflow_dispatch:        # allow manual trigger from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python db/store.py
+
+      - name: Build baseline against live RIPEstat
+        run: python backend/detector/baseline.py
+
+      - name: Verify detection logic still passes against the fresh baseline
+        run: python backend/detector/test_detection_logic.py
+
+      - name: Write a committable summary (the SQLite DB itself is gitignored)
+        run: |
+          python - <<'PY'
+          import json, sqlite3, time
+          conn = sqlite3.connect("db/bgp_monitor.db")
+          conn.row_factory = sqlite3.Row
+          rows = conn.execute(
+              "SELECT asn, COUNT(*) c FROM baseline_prefixes GROUP BY asn ORDER BY asn"
+          ).fetchall()
+          summary = {
+              "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "total_prefixes": sum(r["c"] for r in rows),
+              "per_asn": {str(r["asn"]): r["c"] for r in rows},
+          }
+          with open("docs/baseline-summary.json", "w") as f:
+              json.dump(summary, f, indent=2)
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Commit updated baseline summary
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/baseline-summary.json
+          git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh baseline summary"
+          git push

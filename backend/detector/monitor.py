@@ -156,4 +156,10 @@ def run_monitor(max_messages=None, max_seconds=None):
 
 
 if __name__ == "__main__":
-    run_monitor(max_seconds=60)
+    import argparse
+    parser = argparse.ArgumentParser(description="Run the live BGP monitor.")
+    parser.add_argument("--max-seconds", type=int, default=None,
+                         help="Stop after N seconds (omit to run indefinitely, "
+                              "e.g. as a background service via run_monitor.bat)")
+    args = parser.parse_args()
+    run_monitor(max_seconds=args.max_seconds)

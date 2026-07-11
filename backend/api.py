@@ -27,12 +27,21 @@ def list_tracked_asns():
     counts = conn.execute(
         "SELECT asn, COUNT(*) c FROM baseline_prefixes GROUP BY asn"
     ).fetchall()
+    rpki = store.get_rpki_coverage(conn)
     conn.close()
     prefix_counts = {row["asn"]: row["c"] for row in counts}
-    return [
-        {"asn": asn, "name": name, "baseline_prefix_count": prefix_counts.get(asn, 0)}
-        for asn, name in TRACKED_ASNS.items()
-    ]
+    result = []
+    for asn, name in TRACKED_ASNS.items():
+        cov = rpki.get(asn)
+        result.append({
+            "asn": asn,
+            "name": name,
+            "baseline_prefix_count": prefix_counts.get(asn, 0),
+            "rpki_sample_size": cov["sample_size"] if cov else None,
+            "rpki_covered_count": cov["covered_count"] if cov else None,
+            "rpki_checked_at": cov["checked_at"] if cov else None,
+        })
+    return result
 
 
 @app.get("/api/events")

@@ -31,10 +31,20 @@ Educational/portfolio project, not a production security tool. Detection coverag
 - Live/not-running status badge based on time since the last processed message
 - Tracked-ASN grid, filterable event table
 
+### RPKI Coverage
+
+- `rpki_coverage.py` samples up to 30 baseline prefixes per ASN and reports what fraction have a ROA at all — real numbers range from 40% (Airtel's primary block) to 100% (Jio, BSNL, ACT, Tata Communications)
+- Shown per-ASN on the dashboard as "X% ROA-covered (sample of N)" — explicitly labeled as a sample, not exhaustive
+
+### Automation
+
+- `.github/workflows/test.yml` — CI runs the detection-logic tests on every push
+- `.github/workflows/refresh-baseline.yml` — daily cron job rebuilds the baseline against live RIPEstat, re-runs the tests against it, and commits a summary (`docs/baseline-summary.json`) back to the repo, all on free GitHub Actions minutes
+- `run_monitor.bat` — restart-on-crash wrapper so the monitor can run as a persistent Windows background service (see `docs/scheduling.md`) instead of only during a manual demo session
+
 ### Verification
 
 - `test_detection_logic.py` — 5 fixtures against real Airtel/Jio blocks with synthetic wrong-origin scenarios
-- CI (`.github/workflows/test.yml`) runs the same tests on every push, free GitHub Actions minutes
 - Monitor has been run against real BGP traffic and confirmed to process real messages with zero false positives
 
 ---
@@ -104,7 +114,10 @@ India-BGP-Hijack-Monitor/
 ├── LICENSE
 ├── requirements.txt
 ├── .gitignore
-├── .github/workflows/test.yml             # CI: runs detection tests on push
+├── run_monitor.bat                        # Restart-on-crash wrapper for a persistent monitor
+├── .github/workflows/
+│   ├── test.yml                           # CI: runs detection tests on push
+│   └── refresh-baseline.yml               # CI: daily baseline rebuild + summary commit
 │
 ├── backend/
 │   ├── api.py                             # FastAPI: /api/status, /api/asns, /api/events
@@ -112,6 +125,7 @@ India-BGP-Hijack-Monitor/
 │       ├── targets.py                     # 9 tracked Indian ASNs
 │       ├── baseline.py                    # Fetches announced prefixes per ASN
 │       ├── monitor.py                     # RIS Live listener, flags origin mismatches
+│       ├── rpki_coverage.py               # Sample-based RPKI ROA coverage per ASN
 │       └── test_detection_logic.py        # Unit tests against fabricated fixtures
 │
 ├── db/
@@ -122,7 +136,9 @@ India-BGP-Hijack-Monitor/
 │   └── index.html
 │
 └── docs/
-    └── limitations.md
+    ├── limitations.md
+    ├── scheduling.md                      # Running the monitor as a background service
+    └── baseline-summary.json              # Committed by refresh-baseline.yml
 ```
 
 ---
@@ -201,7 +217,9 @@ python backend/detector/test_detection_logic.py
 | Init schema | `python db/store.py` | Create the SQLite schema |
 | Build baseline | `python backend/detector/baseline.py` | Fetch current announced prefixes |
 | Run tests | `python backend/detector/test_detection_logic.py` | Verify detection logic |
-| Live monitor | `python backend/detector/monitor.py` | Watch real BGP traffic |
+| RPKI coverage | `python backend/detector/rpki_coverage.py` | Sample RPKI ROA coverage per ASN (~5 min) |
+| Live monitor (timed) | `python backend/detector/monitor.py --max-seconds 60` | Watch real BGP traffic for 60s |
+| Live monitor (persistent) | `run_monitor.bat` | Run indefinitely with auto-restart (see `docs/scheduling.md`) |
 | Backend | `python -m uvicorn backend.api:app --port 8000` | Start the API server |
 | Frontend | `python -m http.server 8090 --directory frontend` | Serve the dashboard |
 
@@ -229,11 +247,11 @@ python -m http.server 8091 --directory frontend
 Full list in [docs/limitations.md](docs/limitations.md):
 
 - Subscription coverage is the ~8 largest blocks per ASN, not full coverage
-- RPKI coverage is inconsistent for Indian address space — many prefixes have no ROA
+- RPKI coverage varies sharply by ASN (40%-100% in a 30-sample check) and the coverage stat itself is a sample, not exhaustive
 - Verified for precision, not recall against a real incident (recall verified via fixtures instead)
-- Baseline needs periodic manual re-run
+- Baseline auto-refreshes daily via CI, but that only updates the repo's summary — you still need to re-run `baseline.py` locally for your own running instance
 - No outbound alerting — dashboard only
-- Single point of collection — only watches while running
+- The monitor can now run persistently (`run_monitor.bat` + Task Scheduler), but it's still a single point of collection — one machine, no redundancy
 
 ---
 
@@ -245,8 +263,10 @@ Full list in [docs/limitations.md](docs/limitations.md):
 | Baseline prefixes | 20,737 |
 | API endpoints | 3 |
 | Detection logic unit tests | 5 |
-| Backend Python files | 6 |
+| Backend Python files | 7 |
 | Frontend files | 1 |
+| CI workflows | 2 |
+| RPKI coverage range (sampled) | 40%-100% |
 
 ---
 

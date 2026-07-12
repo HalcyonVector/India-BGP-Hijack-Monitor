@@ -6,6 +6,10 @@ Watches real-time BGP route announcements for 9 major Indian networks (Airtel, J
 
 > **Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) — backend on Render, frontend on GitHub Pages, $0/month (see [docs/deployment.md](docs/deployment.md) and its documented free-tier tradeoffs)
 
+![Dashboard screenshot](docs/screenshot.png)
+
+*Captured live from the deployed instance right after a free-tier restart — "RPKI coverage not yet sampled" on every card is the honest state at that moment, not a bug: Render's free tier has no persistent disk, so `rpki_coverage.py`'s results reset on every redeploy/restart (see Known Limitations). The 40%-100% figures in Findings above come from a full sampling run, not this particular snapshot.*
+
 ---
 
 ## Findings

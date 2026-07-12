@@ -234,6 +234,11 @@
   .badge.info { color: var(--ink-muted); }
   .badge.info::before { background: var(--ink-muted); }
 
+  /* "invalid" is the one RPKI status that actually escalates severity to
+     critical in the backend (see backend/detector/monitor.py) -- color it
+     to match, not decoration for its own sake. */
+  td.rpki-invalid { color: var(--critical); font-weight: 650; }
+
   .empty {
     padding: 32px 20px;
     color: var(--ink-muted);
@@ -459,7 +464,7 @@ async function loadEvents() {
       <td>${e.prefix}</td>
       <td>AS${e.expected_asn}</td>
       <td>AS${e.observed_origin_asn ?? '?'}${e.observed_origin_org ? `<div class="asn-org">${e.observed_origin_org}</div>` : ''}</td>
-      <td>${e.rpki_status ?? '—'}</td>
+      <td class="${e.rpki_status === 'invalid' ? 'rpki-invalid' : ''}">${e.rpki_status ?? '—'}</td>
     </tr>
   `).join(''));
 }

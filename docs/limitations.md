@@ -95,3 +95,28 @@
   refresh always works. If this matters for your use case, moving the
   monitor to a separate paid worker (decoupling it from request handling)
   would remove the contention, but that's out of scope for a free deploy.
+- **Baseline drift used to be permanently broken on Render, and the root
+  cause was Render-specific.** `backend/detector/baseline_drift.py`
+  originally shelled out to local `git log`/`git show` to read prior
+  `docs/baseline-summary.json` commits. That works fine locally but always
+  reported "1 snapshot" on the live deployment no matter how many real
+  commits existed on GitHub — confirmed by checking GitHub's commit history
+  directly and comparing against what the deployed instance saw. Root
+  cause: Render's deploy checkout is a shallow git clone, so local git
+  commands on the deployed filesystem structurally cannot see history that
+  exists on GitHub. Fixed by querying the GitHub REST API directly instead
+  of local git (cached in-memory for 10 minutes to stay under GitHub's
+  60/hour unauthenticated rate limit) — verified producing identical real
+  drift numbers locally and on live Render after the fix.
+- **The scheduled (cron) GitHub Actions workflows have not been reliably
+  firing on schedule.** `refresh-baseline.yml` (daily) and
+  `refresh-rpki-coverage.yml` (weekly) both had their cron times offset a
+  few minutes past the hour to avoid GitHub's documented on-the-hour
+  scheduling delay, but the daily workflow still had not fired 8+ hours
+  past its window when checked. The workflow file's content on GitHub was
+  confirmed byte-correct (not a YAML or syntax bug), so this looks like a
+  genuine GitHub Actions scheduler reliability limitation rather than a
+  repo-level bug — outside this project's control to force-fix. The
+  `workflow_dispatch` manual trigger in the GitHub Actions UI remains a
+  reliable fallback if a fresh snapshot is needed before the cron catches
+  up.

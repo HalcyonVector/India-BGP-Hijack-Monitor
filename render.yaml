@@ -9,5 +9,7 @@ services:
     envVars:
       - key: RUN_MONITOR_INLINE
         value: "1"
+      - key: RUN_RPKI_REFRESH_INLINE
+        value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"

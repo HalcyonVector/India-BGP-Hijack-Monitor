@@ -7,6 +7,14 @@ free hosting tier (e.g. Render's free Web Service) only gives you one
 long-running process, so set RUN_MONITOR_INLINE=1 to have this API process
 also start the live monitor as a background thread on boot -- see
 docs/deployment.md.
+
+Render's free tier also has no persistent disk, so rpki_coverage's table
+resets on every restart too. RPKI coverage is self-healing on every boot:
+the committed docs/rpki-coverage-summary.json (weekly CI snapshot) is
+seeded into the DB synchronously and immediately -- no network calls, no
+delay -- and if RUN_RPKI_REFRESH_INLINE=1, a background thread then
+re-samples live RIPEstat data to bring it fully current within ~5 minutes.
+No manual re-run required after a restart.
 """
 import os
 import sys
@@ -20,6 +28,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.detector.baseline import build_baseline
 from backend.detector.baseline_drift import compute_drift
 from backend.detector.monitor import run_monitor
+from backend.detector.rpki_coverage import compute_all as compute_rpki_coverage
+from backend.detector.rpki_coverage import seed_from_committed_summary
 from backend.detector.targets import TRACKED_ASNS
 from db import store
 
@@ -45,6 +55,17 @@ def maybe_start_inline_monitor():
     if os.environ.get("RUN_MONITOR_INLINE") == "1":
         print("RUN_MONITOR_INLINE=1: starting the live monitor in a background thread...")
         thread = threading.Thread(target=run_monitor, kwargs={"max_seconds": None}, daemon=True)
+        thread.start()
+
+    seeded = seed_from_committed_summary()
+    if seeded:
+        print(f"Seeded RPKI coverage for {seeded} ASNs from docs/rpki-coverage-summary.json "
+              f"(committed snapshot -- self-healing after a restart, no manual re-run needed)")
+
+    if os.environ.get("RUN_RPKI_REFRESH_INLINE") == "1":
+        print("RUN_RPKI_REFRESH_INLINE=1: refreshing RPKI coverage with live data in the background "
+              "(~5 min, 9 ASNs x 30 samples)...")
+        thread = threading.Thread(target=compute_rpki_coverage, daemon=True)
         thread.start()
 
 

@@ -66,11 +66,21 @@
   mitigation, not a guarantee of continuous uptime. Genuine 24/7 uptime
   needs a paid tier, which is out of scope for this project.
 - **Render's free tier has no persistent disk add-on**, so every redeploy
-  gets a fresh filesystem — the SQLite DB (baseline, events, RPKI coverage)
-  resets on redeploy. The API self-heals the baseline automatically on
-  boot if it's empty; accumulated event history and RPKI coverage samples
-  do not self-heal and would need `rpki_coverage.py` re-run manually after
-  a redeploy.
+  or restart gets a fresh filesystem — the SQLite DB (baseline, events,
+  RPKI coverage) resets. Two things now self-heal without any manual step:
+  baseline (rebuilds automatically on boot if empty) and **RPKI coverage**
+  (`backend/detector/rpki_coverage.py`'s `seed_from_committed_summary()`
+  loads the last CI-committed `docs/rpki-coverage-summary.json` into the DB
+  synchronously at boot — real data available within seconds of a restart,
+  not "not yet sampled" — and with `RUN_RPKI_REFRESH_INLINE=1` set, a
+  background thread re-samples live data to bring it fully current within
+  ~5 minutes). Verified locally: wiped the RPKI table, restarted, real
+  percentages were back within 3 seconds, and the preserved `checked_at`
+  timestamp correctly matched the committed snapshot's real generation
+  time rather than falsely claiming "just checked now". Accumulated
+  **event history** still does not self-heal (there's no committed
+  snapshot of past events to seed from, by design — events are live
+  detections, not baseline/config data) and genuinely resets on redeploy.
 - **The live deployment intermittently 404s on real endpoints** — confirmed
   live at https://india-bgp-hijack-monitor.onrender.com on 2026-07-11:
   1 of 6 rapid requests to `/api/asns` returned 404 despite the route being

@@ -74,11 +74,11 @@ def touch_monitor_status(conn, messages_delta=1):
     )
 
 
-def set_rpki_coverage(conn, asn, sample_size, covered_count):
+def set_rpki_coverage(conn, asn, sample_size, covered_count, checked_at=None):
     conn.execute(
         "INSERT OR REPLACE INTO rpki_coverage (asn, sample_size, covered_count, checked_at) "
         "VALUES (?, ?, ?, ?)",
-        (asn, sample_size, covered_count, int(time.time())),
+        (asn, sample_size, covered_count, checked_at if checked_at is not None else int(time.time())),
     )
 
 

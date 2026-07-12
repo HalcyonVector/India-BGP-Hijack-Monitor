@@ -297,6 +297,7 @@ Full list in [docs/limitations.md](docs/limitations.md):
 - Baseline auto-refreshes daily via CI, but that only updates the repo's summary — you still need to re-run `baseline.py` locally for your own running instance
 - No outbound alerting — dashboard only
 - The monitor can now run persistently (`run_monitor.bat` + Task Scheduler), but it's still a single point of collection — one machine, no redundancy
+- Render's free tier has no persistent disk, so a restart wipes the SQLite DB — baseline and RPKI coverage both self-heal automatically (seeded/rebuilt on boot, no manual step), but accumulated event history genuinely resets, by design (no fake "historical" events get seeded from a static file)
 
 ---
 

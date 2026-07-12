@@ -33,13 +33,24 @@
      `python -m uvicorn backend.api:app --host 0.0.0.0 --port $PORT` →
      Instance Type: **Free**. Then add the two environment variables from
      step 5 manually under the service's **Environment** tab.
-5. `render.yaml` already sets both required environment variables, but if
+5. `render.yaml` already sets all required environment variables, but if
    you set the service up by hand, add them under **Environment**:
    - `RUN_MONITOR_INLINE` = `1` (starts the live monitor in a background
      thread inside the API process — see `backend/api.py`)
+   - `RUN_RPKI_REFRESH_INLINE` = `1` (re-samples live RPKI coverage in a
+     background thread on boot, on top of the instant seed from the
+     committed summary — see "RPKI coverage self-heals" below)
    - `PYTHONUNBUFFERED` = `1` (so log output shows up in Render's log
      viewer immediately instead of being buffered — without this you'll
      see nothing in the logs for minutes at a time)
+
+   **If you already created the service before this env var existed**:
+   Blueprint config only applies automatically on initial creation —
+   updating `render.yaml` later does not retroactively change an
+   already-running service's environment variables. Add
+   `RUN_RPKI_REFRESH_INLINE=1` manually under the service's **Environment**
+   tab in the Render dashboard, then **Manual Deploy** → **Deploy latest
+   commit** (or just push any commit) to pick it up.
 6. Click **Create Web Service** (or confirm the Blueprint). First deploy
    takes a few minutes — watch the **Logs** tab. On first boot the API
    process builds the baseline itself (empty DB triggers `build_baseline()`
@@ -123,9 +134,17 @@ under the service's **Settings** → **Build & Deploy**). Just `git push` as
 usual.
 
 **Caveat**: Render's free tier does not include a persistent disk add-on,
-so a redeploy gets a fresh filesystem — your live baseline/events/RPKI
-coverage data resets on every redeploy (the API rebuilds the baseline
-automatically on boot if it's empty, so this self-heals, but accumulated
-event history and RPKI coverage samples would need `rpki_coverage.py`
-re-run manually, or you accept they reset). Documented in
-[limitations.md](limitations.md).
+so a redeploy or restart gets a fresh filesystem. Two things self-heal
+automatically, no manual step required:
+- **Baseline** rebuilds itself on boot if the table is empty.
+- **RPKI coverage** is seeded instantly from the committed
+  `docs/rpki-coverage-summary.json` (real percentages within seconds of
+  boot, not "not yet sampled"), then refreshed with fully live data in the
+  background if `RUN_RPKI_REFRESH_INLINE=1` is set.
+
+**Event history does not self-heal** — there's no committed snapshot of
+past detections to seed from (events are live findings, not baseline/config
+data), so accumulated events genuinely reset on redeploy. This is a
+deliberate limitation, not an oversight: seeding fake "historical" events
+from a static file would be actively misleading for a security-monitoring
+tool. Documented in [limitations.md](limitations.md).

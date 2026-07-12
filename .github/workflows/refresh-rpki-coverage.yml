@@ -2,7 +2,8 @@ name: Weekly RPKI coverage refresh
 
 on:
   schedule:
-    - cron: "0 4 * * 1"   # 04:00 UTC every Monday
+    - cron: "13 4 * * 1"   # 04:13 UTC every Monday -- offset from :00 to
+                           # avoid the documented GitHub Actions on-the-hour delay
   workflow_dispatch:
 
 permissions:

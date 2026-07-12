@@ -2,7 +2,8 @@ name: Daily baseline refresh
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # 03:00 UTC daily
+    - cron: "7 3 * * *"   # 03:07 UTC daily -- offset from :00 to avoid the
+                          # documented GitHub Actions on-the-hour delay
   workflow_dispatch:        # allow manual trigger from the Actions tab
 
 permissions:

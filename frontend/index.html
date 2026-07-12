@@ -69,6 +69,11 @@
     color: var(--ink-muted);
   }
   .live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted); }
+  .live-badge.live::before { animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+    50%      { box-shadow: 0 0 0 4px rgba(255,255,255,0); }
+  }
   .live-badge.live {
     color: var(--ink);
     border-color: var(--border-hi);
@@ -159,6 +164,10 @@
   .asn-card .asn-rpki { font-size: 11.5px; color: var(--ink-2); }
   .asn-card .asn-rpki-note { color: var(--ink-muted); }
   .asn-card .asn-rpki-none { color: var(--ink-muted); font-style: italic; }
+  .asn-card .asn-rpki-pct { font-weight: 650; }
+  .asn-card .asn-rpki-pct.good { color: var(--good); }
+  .asn-card .asn-rpki-pct.warning { color: var(--warning); }
+  .asn-card .asn-rpki-pct.critical { color: var(--critical); }
   .asn-org { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
   .drift-up { color: var(--ink); }
   .drift-down { color: var(--critical); }
@@ -410,8 +419,11 @@ async function loadAsns() {
     const hasRpki = a.rpki_sample_size !== null && a.rpki_sample_size > 0;
     const pct = hasRpki ? Math.round((a.rpki_covered_count / a.rpki_sample_size) * 100) : null;
     const age = hasRpki ? timeAgo(a.rpki_checked_at) : null;
+    // Thresholds match the same good/warning/critical vocabulary used for
+    // event severity elsewhere -- not a new arbitrary color scale.
+    const pctCls = pct === null ? '' : pct >= 90 ? 'good' : pct >= 70 ? 'warning' : 'critical';
     const rpkiLine = hasRpki
-      ? `<div class="asn-rpki">${pct}% ROA-covered <span class="asn-rpki-note">(sample of ${a.rpki_sample_size}${age ? `, ${age}` : ''})</span></div>`
+      ? `<div class="asn-rpki"><span class="asn-rpki-pct ${pctCls}">${pct}%</span> ROA-covered <span class="asn-rpki-note">(sample of ${a.rpki_sample_size}${age ? `, ${age}` : ''})</span></div>`
       : `<div class="asn-rpki asn-rpki-none">RPKI coverage not yet sampled</div>`;
     return `
     <div class="asn-card">

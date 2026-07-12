@@ -1,4 +1,4 @@
-name: Detection logic tests
+name: tests
 
 on:
   push:
@@ -16,3 +16,4 @@ jobs:
       - run: python db/store.py
       - run: python backend/detector/baseline.py
       - run: python backend/detector/test_detection_logic.py
+      - run: python backend/test_api.py

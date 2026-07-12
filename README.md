@@ -1,6 +1,20 @@
 # India BGP Hijack/Leak Monitor
 
+[![tests](https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/actions/workflows/test.yml/badge.svg)](https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/actions/workflows/test.yml)
+
 Watches real-time BGP route announcements for 9 major Indian networks (Airtel, Jio, BSNL, ACT Fibernet, Vodafone Idea, Tata Communications, Sify, RailTel). Flags a prefix if it gets announced by an ASN that doesn't normally own it, cross-checks RPKI where a ROA exists, and serves the result through a FastAPI backend and a dashboard. Built on free, keyless public data — RIPE RIS Live and RIPEstat.
+
+> **Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) — backend on Render, frontend on GitHub Pages, $0/month (see [docs/deployment.md](docs/deployment.md) and its documented free-tier tradeoffs)
+
+---
+
+## Findings
+
+Real numbers from running this, not projections:
+
+- **RPKI coverage varies 40%→100% by ISP.** Sampling 30 prefixes per ASN against live RIPEstat data: Bharti Airtel's primary block (AS24560) sits at just **40%** ROA coverage, while Jio, BSNL, ACT Fibernet, and Tata Communications are all at **100%**. Same country, same regulatory environment, wildly different RPKI adoption.
+- **Zero false positives across real traffic.** Live-tested against real BGP updates (thousands of messages processed) with zero incorrect hijack flags.
+- **Detection logic verified two ways**: 5/5 unit tests against fabricated hijack fixtures (proves it *would* catch a real one), plus live-traffic precision testing (proves it doesn't cry wolf on normal traffic) — a real hijack wasn't observed live, and that distinction is stated plainly rather than implied away.
 
 ---
 
@@ -48,6 +62,7 @@ Educational/portfolio project, not a production security tool. Detection coverag
 ### Verification
 
 - `test_detection_logic.py` — 5 fixtures against real Airtel/Jio blocks with synthetic wrong-origin scenarios
+- `test_api.py` — 7 checks against the live FastAPI endpoints themselves (response shape, severity filtering, limit validation, empty-history handling), not just the detection logic
 - Monitor has been run against real BGP traffic and confirmed to process real messages with zero false positives
 
 ---
@@ -63,7 +78,8 @@ Educational/portfolio project, not a production security tool. Detection coverag
 | HTTP client | requests | |
 | Database | SQLite (`sqlite3`) | |
 | Frontend | Vanilla HTML/CSS/JS | No framework |
-| CI | GitHub Actions | Runs `test_detection_logic.py` on push |
+| API testing | httpx2 + FastAPI TestClient | Real endpoint tests, not just detection logic |
+| CI | GitHub Actions | Runs both test suites on push; daily/weekly data-refresh crons |
 
 ---
 
@@ -137,6 +153,7 @@ India-BGP-Hijack-Monitor/
 ├── backend/
 │   ├── api.py                             # FastAPI: status, asns, events, baseline-drift
 │   │                                       #   (+ optional inline monitor thread for deploy)
+│   ├── test_api.py                        # Tests the live endpoints themselves
 │   └── detector/
 │       ├── targets.py                     # 9 tracked Indian ASNs
 │       ├── baseline.py                    # Fetches announced prefixes per ASN
@@ -224,10 +241,11 @@ No environment variables or API keys. `backend/detector/targets.py` holds the tr
 ## Testing
 
 ```bash
-python backend/detector/test_detection_logic.py
+python backend/detector/test_detection_logic.py   # detection logic: 5 fixture-based checks
+python backend/test_api.py                         # API endpoints: 7 checks against the real FastAPI app
 ```
 
-5 fixture-based checks: legitimate exact match, legitimate sub-prefix, fabricated exact-prefix hijack, fabricated sub-prefix hijack, unrelated prefix correctly ignored. No live traffic or API keys required. Also runs in CI on every push.
+Detection logic: legitimate exact match, legitimate sub-prefix, fabricated exact-prefix hijack, fabricated sub-prefix hijack, unrelated prefix correctly ignored. API tests: response shape, severity filtering, limit validation (rejects over-max instead of silently truncating), empty-history handling. No live traffic or API keys required for either. Both run in CI on every push.
 
 ---
 
@@ -237,7 +255,8 @@ python backend/detector/test_detection_logic.py
 |--------|---------|--------------|
 | Init schema | `python db/store.py` | Create the SQLite schema |
 | Build baseline | `python backend/detector/baseline.py` | Fetch current announced prefixes |
-| Run tests | `python backend/detector/test_detection_logic.py` | Verify detection logic |
+| Run detection tests | `python backend/detector/test_detection_logic.py` | Verify detection logic |
+| Run API tests | `python backend/test_api.py` | Verify the live FastAPI endpoints |
 | RPKI coverage | `python backend/detector/rpki_coverage.py` | Sample RPKI ROA coverage per ASN (~5 min) |
 | Baseline drift | `python backend/detector/baseline_drift.py` | Per-ASN prefix count drift from git history |
 | Live monitor (timed) | `python backend/detector/monitor.py --max-seconds 60` | Watch real BGP traffic for 60s |

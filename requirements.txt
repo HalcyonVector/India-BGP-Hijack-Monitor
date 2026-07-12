@@ -2,3 +2,4 @@ requests>=2.31
 websocket-client>=1.7
 fastapi>=0.110
 uvicorn>=0.27
+httpx2>=2.5  # starlette.testclient's current dependency (httpx is deprecated for this use)

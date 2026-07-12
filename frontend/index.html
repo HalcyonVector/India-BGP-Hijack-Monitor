@@ -14,10 +14,7 @@
     --ink-muted:   #8b899a;
     --border:      rgba(255,255,255,0.10);
     --border-hi:   rgba(255,255,255,0.20);
-    --accent:      #b892ff;
-    --accent-2:    #f472b6;
-    --accent-grad: linear-gradient(135deg, #8b7dfa 0%, #b892ff 45%, #f472b6 100%);
-    --accent-wash: rgba(184,146,255,0.14);
+    --sheen:       linear-gradient(165deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 55%);
     --good:        #0ca30c;
     --warning:     #fab219;
     --critical:    #d03b3b;
@@ -28,10 +25,7 @@
 
   body {
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background:
-      radial-gradient(700px 320px at 50% -80px, rgba(139,125,250,0.16), transparent 70%),
-      radial-gradient(500px 260px at 85% 0%, rgba(244,114,182,0.08), transparent 70%),
-      var(--page);
+    background: var(--page);
     color: var(--ink-2);
     margin: 0;
     padding: 40px clamp(20px, 5vw, 56px) 64px;
@@ -44,10 +38,7 @@
     font-weight: 700;
     margin: 0 0 6px;
     letter-spacing: -0.01em;
-    background: linear-gradient(135deg, #ffffff 25%, #d8cdff 65%, #f4b8dd 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: var(--ink);
   }
   .subtitle { color: var(--ink-muted); font-size: 13.5px; }
   .subtitle b { color: var(--ink-2); font-weight: 600; }
@@ -66,11 +57,11 @@
   }
   .live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted); }
   .live-badge.live {
-    color: #fff;
-    border-color: transparent;
-    background: var(--accent-grad);
+    color: var(--ink);
+    border-color: var(--border-hi);
+    background: var(--sheen), var(--surface-2);
   }
-  .live-badge.live::before { background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.25); }
+  .live-badge.live::before { background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.2); }
 
   section { margin-bottom: 40px; }
   h2 {
@@ -96,23 +87,13 @@
 
   .stat-tile {
     position: relative;
-    background: var(--surface);
+    background: var(--sheen), var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 20px 18px;
-    overflow: hidden;
     transition: border-color 150ms ease, transform 150ms ease;
   }
-  .stat-tile::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--accent-grad);
-    opacity: 0.55;
-  }
   .stat-tile:hover { border-color: var(--border-hi); transform: translateY(-1px); }
-  .stat-tile:hover::before { opacity: 1; }
   .stat-tile .value {
     font-size: 30px;
     font-weight: 650;
@@ -127,12 +108,6 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .stat-tile.accent .value {
-    background: var(--accent-grad);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
   .stat-tile.critical .value { color: var(--critical); }
 
   /* ASN grid — fixed 3-column, equal-height cards, deliberate not "random" */
@@ -145,7 +120,7 @@
   @media (max-width: 560px) { .asn-grid { grid-template-columns: 1fr; } }
 
   .asn-card {
-    background: var(--surface);
+    background: var(--sheen), var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px 16px;
@@ -157,17 +132,14 @@
   }
   .asn-card:hover {
     border-color: var(--border-hi);
-    background: var(--surface-2);
-    box-shadow: 0 0 0 1px rgba(184,146,255,0.15), 0 8px 24px -12px rgba(139,125,250,0.35);
+    background: var(--sheen), var(--surface-2);
+    box-shadow: 0 8px 24px -12px rgba(0,0,0,0.5);
   }
   .asn-card .asn-id {
     font-size: 11px;
     font-weight: 650;
-    background: var(--accent-grad);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    letter-spacing: 0.03em;
+    color: var(--ink-2);
+    letter-spacing: 0.06em;
   }
   .asn-card .asn-name { font-size: 13.5px; color: var(--ink); font-weight: 500; }
   .asn-card .asn-count { font-size: 12px; color: var(--ink-muted); margin-top: auto; }
@@ -175,7 +147,7 @@
   .asn-card .asn-rpki-note { color: var(--ink-muted); }
   .asn-card .asn-rpki-none { color: var(--ink-muted); font-style: italic; }
   .asn-org { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
-  .drift-up { color: var(--accent); }
+  .drift-up { color: var(--ink); }
   .drift-down { color: var(--critical); }
 
   /* Events section */
@@ -198,7 +170,7 @@
   }
   select:hover, button:hover { border-color: var(--border-hi); background: var(--surface-2); }
   button { color: var(--ink); font-weight: 500; }
-  button:active { background: var(--accent-wash); border-color: var(--accent); }
+  button:active { background: var(--surface-2); border-color: var(--border-hi); }
 
   .table-wrap {
     background: var(--surface);
@@ -339,7 +311,7 @@ async function loadStatus() {
   const tiles = [
     { value: compactNumber(s.baseline_prefix_count), label: 'Baseline prefixes' },
     { value: s.tracked_asn_count, label: 'Tracked ASNs' },
-    { value: compactNumber(s.messages_seen ?? 0), label: 'Messages processed', cls: 'accent' },
+    { value: compactNumber(s.messages_seen ?? 0), label: 'Messages processed' },
     { value: s.total_events, label: 'Events flagged', cls: s.total_events > 0 ? 'critical' : '' },
   ];
   document.getElementById('statGrid').innerHTML = tiles.map(t => `

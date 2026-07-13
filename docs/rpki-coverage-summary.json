@@ -1,20 +1,20 @@
 {
-  "generated_at_utc": "2026-07-11T17:08:15Z",
+  "generated_at_utc": "2026-07-13T07:39:55Z",
   "per_asn": {
     "4755": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 29,
+      "covered_pct": 96.7
     },
     "9498": {
       "sample_size": 30,
-      "covered_count": 28,
-      "covered_pct": 93.3
+      "covered_count": 27,
+      "covered_pct": 90.0
     },
     "9583": {
       "sample_size": 30,
-      "covered_count": 25,
-      "covered_pct": 83.3
+      "covered_count": 27,
+      "covered_pct": 90.0
     },
     "9829": {
       "sample_size": 30,
@@ -23,23 +23,23 @@
     },
     "24186": {
       "sample_size": 30,
-      "covered_count": 29,
-      "covered_pct": 96.7
-    },
-    "24309": {
-      "sample_size": 30,
       "covered_count": 30,
       "covered_pct": 100.0
     },
-    "24560": {
-      "sample_size": 30,
-      "covered_count": 12,
-      "covered_pct": 40.0
-    },
-    "55410": {
+    "24309": {
       "sample_size": 30,
       "covered_count": 28,
       "covered_pct": 93.3
+    },
+    "24560": {
+      "sample_size": 30,
+      "covered_count": 14,
+      "covered_pct": 46.7
+    },
+    "55410": {
+      "sample_size": 30,
+      "covered_count": 30,
+      "covered_pct": 100.0
     },
     "55836": {
       "sample_size": 30,

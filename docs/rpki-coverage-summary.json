@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-13T07:39:55Z",
+  "generated_at_utc": "2026-07-20T07:33:11Z",
   "per_asn": {
     "4755": {
       "sample_size": 30,
@@ -8,8 +8,8 @@
     },
     "9498": {
       "sample_size": 30,
-      "covered_count": 27,
-      "covered_pct": 90.0
+      "covered_count": 30,
+      "covered_pct": 100.0
     },
     "9583": {
       "sample_size": 30,
@@ -18,8 +18,8 @@
     },
     "9829": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 29,
+      "covered_pct": 96.7
     },
     "24186": {
       "sample_size": 30,
@@ -28,8 +28,8 @@
     },
     "24309": {
       "sample_size": 30,
-      "covered_count": 28,
-      "covered_pct": 93.3
+      "covered_count": 29,
+      "covered_pct": 96.7
     },
     "24560": {
       "sample_size": 30,
@@ -38,8 +38,8 @@
     },
     "55410": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 28,
+      "covered_pct": 93.3
     },
     "55836": {
       "sample_size": 30,

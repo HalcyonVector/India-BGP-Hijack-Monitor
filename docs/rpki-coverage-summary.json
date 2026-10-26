@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-19T09:55:50Z",
+  "generated_at_utc": "2026-10-26T10:09:05Z",
   "per_asn": {
     "4755": {
       "sample_size": 30,
@@ -8,13 +8,13 @@
     },
     "9498": {
       "sample_size": 30,
-      "covered_count": 29,
-      "covered_pct": 96.7
+      "covered_count": 28,
+      "covered_pct": 93.3
     },
     "9583": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 26,
+      "covered_pct": 86.7
     },
     "9829": {
       "sample_size": 30,
@@ -23,8 +23,8 @@
     },
     "24186": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 29,
+      "covered_pct": 96.7
     },
     "24309": {
       "sample_size": 30,
@@ -33,8 +33,8 @@
     },
     "24560": {
       "sample_size": 30,
-      "covered_count": 16,
-      "covered_pct": 53.3
+      "covered_count": 19,
+      "covered_pct": 63.3
     },
     "55410": {
       "sample_size": 30,

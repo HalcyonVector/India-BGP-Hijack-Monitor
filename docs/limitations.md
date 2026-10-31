@@ -34,9 +34,11 @@
   After the fix, a ~15-minute run (~48k prefix updates) flagged real
   origin differences, nearly all of them RPKI-authorized customer
   sub-blocks (now `info`), plus a few no-ROA cases (`warning`). Airtel's
-  two ASNs announcing each other's space were false positives, now handled
-  as siblings in `targets.py`. Other multi-ASN companies may need adding
-  there too. It did NOT observe an actual real hijack live (none
+  ASNs announcing each other's space were false positives, now handled as
+  siblings in `targets.py`: first AS24560 / AS9498, then a later run
+  surfaced AS45609, Airtel's mobile network, which isn't tracked at all.
+  Sibling groups are a hand-maintained list, so other multi-ASN companies
+  may still need adding. It did NOT observe an actual real hijack live (none
   occurred in that window), so recall (does it actually catch a real
   hijack when one happens) is verified via unit tests against fabricated
   fixtures (`backend/detector/test_detection_logic.py`), not a real

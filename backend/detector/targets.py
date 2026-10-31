@@ -19,9 +19,11 @@ TRACKED_ASNS = {
 
 # ASNs run by the same company. One announcing the other's space is internal
 # traffic engineering, not a hijack -- found live: AS24560 originates /24s
-# out of AS9498's blocks (and vice versa) all day.
+# out of AS9498's blocks (and vice versa) all day. AS45609 is Airtel's
+# mobile network (BHARTI-MOBILITY-AS-AP); it isn't tracked itself, but it
+# announces /24s inside AS24560's space and was being flagged as a warning.
 SIBLING_GROUPS = [
-    {24560, 9498},  # Bharti Airtel
+    {24560, 9498, 45609},  # Bharti Airtel
 ]
 
 

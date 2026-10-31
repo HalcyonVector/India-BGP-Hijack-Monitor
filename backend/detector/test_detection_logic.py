@@ -69,6 +69,10 @@ def run_tests():
     v = classify_announcement(sub_prefix, 9498, exact, networks)
     results.append(("sibling ASN (AS9498 on AS24560 space) not flagged", v is not None and not v["flagged"]))
 
+    # 9. Airtel's untracked mobile ASN (AS45609) on Airtel space is not a hijack either
+    v = classify_announcement(sub_prefix, 45609, exact, networks)
+    results.append(("untracked sibling (AS45609 on AS24560 space) not flagged", v is not None and not v["flagged"]))
+
     all_pass = True
     for name, ok in results:
         print(f"  [{'PASS' if ok else 'FAIL'}] {name}")

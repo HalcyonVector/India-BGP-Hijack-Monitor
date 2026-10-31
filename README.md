@@ -27,7 +27,7 @@ Real results from running this, not projections:
 - **The first version never checked a single prefix.** The monitor read `announcement["prefix"]`, but RIS Live sends `announcement["prefixes"]` (a list). Every message raised a `KeyError` that websocket-client silently swallowed, so the early "zero false positives" result really meant zero checks. Fixed, and handler errors are now logged loudly.
 - **Once it actually ran, a "wrong" origin was usually fine.** In a ~15-minute live run (~48,000 prefix updates), most mismatched origins were Indian businesses (Canara Bank, Powergrid, Wipro, Morgan Stanley's India arm) announcing sub-blocks of their ISP's space, each **explicitly authorized by an RPKI ROA**. These are graded `info`. What's left as `warning` is the genuinely unverifiable case, such as AS135709 (Lightstorm) originating a /24 inside Sify's space with no ROA either way.
 - **"Critical" could never fire.** RIPEstat reports `invalid_asn` / `invalid_length`, never a bare `invalid`, so the original `== "invalid"` check never matched. A Pakistan Telecom (AS17557) announcement of Airtel's block now correctly comes out **critical**.
-- **Airtel announces its own space from two ASNs.** AS24560 and AS9498 are both Bharti Airtel, and early runs flagged them as hijacking each other. They're now treated as siblings. Over 109 daily snapshots (July to October 2026), AS24560's announced prefix count fell by 270 while AS9498's rose by 130.
+- **Airtel announces its own space from three ASNs.** AS24560, AS9498 and AS45609 (its mobile network) are all Bharti Airtel, and runs flagged them as hijacking each other. They're now treated as siblings. Over 109 daily snapshots (July to October 2026), AS24560's announced prefix count fell by 270 while AS9498's rose by 130.
 - **RPKI adoption is uneven.** In the latest 30-prefix-per-network sample, Airtel's AS24560 has ROAs for **63%** of its prefixes, while Jio, BSNL and Vodafone Idea are at **100%** and everyone else is between 87% and 97%. RPKI can strongly back up a flag for some networks and barely help for others.
 
 ---
@@ -40,7 +40,7 @@ Real results from running this, not projections:
 - **Baseline comparison:** each tracked network's currently-announced prefixes (from RIPEstat) are the ground truth. The covering prefix for any announcement is found by walking up its supernets (at most 32 lookups for IPv4), not by scanning all ~21k networks.
 - **More-specific detection:** `moreSpecific: true` subscriptions catch a /24 carved out of a normally-/16 block, not just exact-prefix mismatches.
 - **RPKI grading on every flag:** ROA authorizes the origin → `info`, no ROA → `warning`, ROA rejects the origin (`invalid_asn` / `invalid_length`) → `critical`.
-- **Sibling networks** of the same company (Airtel's AS24560 / AS9498) count as the same owner.
+- **Sibling networks** of the same company (Airtel's AS24560, AS9498 and mobile AS45609) count as the same owner.
 - **Repeat suppression:** the same (prefix, origin) is logged once per 6 hours, not on every re-announcement.
 - **Named offenders:** the observed origin is resolved to its holder organisation (RIPEstat as-overview), not left as a bare number.
 
@@ -145,7 +145,7 @@ Render runs the API and the monitor in one free web service (`render.yaml`), and
 ### Tests
 
 ```bash
-python backend/detector/test_detection_logic.py   # detection logic: 8 checks
+python backend/detector/test_detection_logic.py   # detection logic: 9 checks
 python backend/test_api.py                         # API endpoints: 11 checks
 ```
 
@@ -270,7 +270,7 @@ python backend/detector/test_detection_logic.py
 python backend/test_api.py
 ```
 
-**Detection logic (8 checks):** a legitimate exact match, a legitimate sub-prefix, a fabricated exact-prefix hijack, a fabricated sub-prefix hijack, unrelated space ignored, RPKI severity grading against RIPEstat's real status strings, AS-path upstream extraction (with prepending collapsed), and Airtel's sibling ASN not being flagged.
+**Detection logic (9 checks):** a legitimate exact match, a legitimate sub-prefix, a fabricated exact-prefix hijack, a fabricated sub-prefix hijack, unrelated space ignored, RPKI severity grading against RIPEstat's real status strings, AS-path upstream extraction (with prepending collapsed), and Airtel's sibling ASNs (including its untracked mobile network) not being flagged.
 
 **API (11 checks), against the real FastAPI app:** response shapes, severity filtering, `limit` validation (over-max is rejected, not silently capped), drift always reporting a status, the `/api/live` shape, and `/api/check` verdicts: Jio's own block isn't flagged, a fabricated sub-prefix hijack is, and untracked space and bad input are handled.
 

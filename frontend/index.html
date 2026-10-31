@@ -447,6 +447,10 @@
   .graph-wrap .edge { fill: none; stroke: var(--accent); stroke-opacity: 0.35; transition: stroke-opacity 150ms ease; }
   .graph-wrap .node rect { fill: var(--solid); fill-opacity: 0.85; stroke: var(--border-hi); }
   .graph-wrap .node text { fill: var(--ink-2); font-size: 12px; }
+  .graph-wrap .graph-empty { fill: var(--ink-muted); font-size: 13px; }
+  /* one line each, always, so live numbers can't change a card's height */
+  .asn-card .asn-up, .asn-card .asn-count { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .asn-card .asn-up-none { color: var(--ink-muted); font-style: italic; }
   .graph-wrap .node text.asn { fill: var(--ink-muted); font-size: 10.5px; font-family: var(--mono); }
   .graph-wrap .node { cursor: pointer; }
   .graph-wrap.focus .edge { stroke-opacity: 0.05; }
@@ -593,7 +597,7 @@
   <h2>Who Carries India's Routes<span class="rule"></span></h2>
   <div class="panel">
     <div class="panel-title">Upstream networks observed handing each ISP's routes to the internet <span class="hint">hover a node</span></div>
-    <div class="graph-wrap" id="graphWrap"><div class="feed-empty">No upstreams observed yet. They appear as announcements arrive.</div></div>
+    <div class="graph-wrap" id="graphWrap"></div>
   </div>
 </section>
 
@@ -818,16 +822,20 @@ async function loadAsns() {
     const rpkiLine = hasRpki
       ? `<div class="asn-rpki"><span class="asn-rpki-pct ${pctCls}">${pct}%</span> ROA-covered <span class="asn-rpki-note">(sample of ${a.rpki_sample_size}${age ? `, ${age}` : ''})</span></div>`
       : `<div class="asn-rpki asn-rpki-none">RPKI coverage not yet sampled</div>`;
-    const series = _live?.activity.find(s => s.asn === a.asn);
-    const hourTotal = series ? series.announcements.reduce((x, y) => x + y, 0) + series.withdrawals.reduce((x, y) => x + y, 0) : 0;
+    // Every line is always rendered (with a placeholder until data arrives) so
+    // a card never grows mid-session and shoves the rest of the page down.
+    const series = _live?.activity.find(s => s.asn === a.asn) || EMPTY_SERIES;
+    const hourTotal = series.announcements.reduce((x, y) => x + y, 0) + series.withdrawals.reduce((x, y) => x + y, 0);
     const top = _live?.upstreams.filter(e => e.asn === a.asn).sort((x, y) => y.seen_count - x.seen_count)[0];
     return `
     <div class="asn-card">
       <div class="asn-id">AS${a.asn}</div>
       <div class="asn-name">${a.name}</div>
-      ${series ? `<div class="asn-spark">${renderBars(series, 30, true)}</div>` : ''}
-      <div class="asn-count">${compactNumber(a.baseline_prefix_count)} baseline prefixes${series ? ` · ${compactNumber(hourTotal)} updates in the last hour` : ''}</div>
-      ${top ? `<div class="asn-up">Top upstream: <b>AS${top.upstream_asn}</b> ${esc(shortHolder(top.upstream_asn, top.upstream_name))}</div>` : ''}
+      <div class="asn-spark">${renderBars(series, 30, true)}</div>
+      <div class="asn-count" title="${a.baseline_prefix_count} baseline prefixes, ${hourTotal} updates in the last hour">${compactNumber(a.baseline_prefix_count)} baseline prefixes · ${compactNumber(hourTotal)} updates/hr</div>
+      ${top
+        ? `<div class="asn-up">Top upstream: <b>AS${top.upstream_asn}</b> ${esc(shortHolder(top.upstream_asn, top.upstream_name))}</div>`
+        : `<div class="asn-up asn-up-none">Top upstream: not observed yet</div>`}
       ${rpkiLine}
     </div>
   `;
@@ -841,6 +849,8 @@ let _asns = null;
 
 // Stacked announce/withdraw bars, one per minute. `compact` = the small
 // per-card sparkline; otherwise the full-size chart with a time axis.
+const EMPTY_SERIES = { announcements: Array(60).fill(0), withdrawals: Array(60).fill(0) };
+
 function renderBars(series, height, compact) {
   const n = series.announcements.length;
   const w = 600, gap = compact ? 2 : 3, bw = (w - gap * (n - 1)) / n;
@@ -1079,9 +1089,22 @@ async function loadLive() {
 
 // ---- Upstream graph -----------------------------------------------------
 
+// The graph is always drawn at its full 10-row height, even while upstreams
+// are still being discovered after a restart: if it grew row by row,
+// everything below it would jump on each poll.
+const GRAPH_W = 760, GRAPH_ROW_H = 38, GRAPH_TOP = 6, GRAPH_ROWS = 10;
+const GRAPH_H = GRAPH_ROWS * GRAPH_ROW_H + GRAPH_TOP * 2;
+
 function renderGraph(edges) {
   const wrap = document.getElementById('graphWrap');
-  if (!edges.length) return;
+  if (!edges.length) {
+    if (_lastRendered.graph === '[]') return;
+    _lastRendered.graph = '[]';
+    wrap.innerHTML = `<svg viewBox="0 0 ${GRAPH_W} ${GRAPH_H}" width="100%" role="img" aria-label="No upstreams observed yet">
+      <text class="graph-empty" x="${GRAPH_W / 2}" y="${GRAPH_H / 2}" text-anchor="middle">No upstreams observed yet. They appear as announcements arrive.</text>
+    </svg>`;
+    return;
+  }
   const sum = (key, val) => edges.reduce((m, e) => (m[e[key]] = (m[e[key]] || 0) + e.seen_count, m), {});
   const leftTotals = sum('asn'), rightTotals = sum('upstream_asn');
   const left = Object.keys(leftTotals).map(Number).sort((a, b) => leftTotals[b] - leftTotals[a]);
@@ -1089,8 +1112,7 @@ function renderGraph(edges) {
   const shown = edges.filter(e => right.includes(e.upstream_asn));
   const names = Object.fromEntries(edges.map(e => [e.upstream_asn, e.upstream_name]));
 
-  const W = 760, rowH = 38, nodeW = 210, top = 6;
-  const H = Math.max(left.length, right.length) * rowH + top * 2;
+  const W = GRAPH_W, rowH = GRAPH_ROW_H, nodeW = 210, H = GRAPH_H;
   const yOf = (list, asn) => {
     const offset = (H - list.length * rowH) / 2;
     return offset + list.indexOf(asn) * rowH + rowH / 2;
@@ -1121,6 +1143,8 @@ function renderGraph(edges) {
   _lastRendered.graph = JSON.stringify(shown);
   wrap.innerHTML = html;
 }
+
+renderGraph([]);  // full-size empty frame until the first poll lands
 
 document.getElementById('graphWrap').addEventListener('mouseover', ev => {
   const wrap = ev.currentTarget;

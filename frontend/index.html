@@ -534,7 +534,7 @@
 <body>
 
 <div id="apiErrorBanner" class="api-error-banner" style="display:none;">
-  Couldn't reach the API for a couple of tries in a row — retrying automatically. Data below may be stale.
+  Couldn't reach the API for a couple of tries in a row. Retrying automatically. Data below may be stale.
 </div>
 
 <header class="hero">
@@ -593,7 +593,7 @@
   <h2>Who Carries India's Routes<span class="rule"></span></h2>
   <div class="panel">
     <div class="panel-title">Upstream networks observed handing each ISP's routes to the internet <span class="hint">hover a node</span></div>
-    <div class="graph-wrap" id="graphWrap"><div class="feed-empty">No upstreams observed yet — they appear as announcements arrive.</div></div>
+    <div class="graph-wrap" id="graphWrap"><div class="feed-empty">No upstreams observed yet. They appear as announcements arrive.</div></div>
   </div>
 </section>
 
@@ -655,11 +655,11 @@ const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
 const API = IS_LOCAL ? 'http://127.0.0.1:8000' : DEPLOYED_API_URL;
 
 const EMPTY_EVENTS_MSG = IS_LOCAL
-  ? `No events yet — this is expected between live monitor runs. Run
+  ? `No events yet, which is expected between live monitor runs. Run
      <code>python backend/detector/monitor.py</code> to watch live, or
      <code>python backend/detector/test_detection_logic.py</code> to see the
      detection logic verified against fabricated fixtures.`
-  : `No events yet — that's expected. The monitor runs continuously in the
+  : `No events yet, and that's expected. The monitor runs continuously in the
      background on this deployment (no action needed), and real hijacks are
      rare; zero events over time is the normal, healthy state, not a sign
      anything is broken. Check the "Live" badge above and "Messages
@@ -758,7 +758,7 @@ async function loadStatus() {
   const badge = document.getElementById('liveBadge');
   const secondsSinceLastMessage = s.last_message_at ? (Date.now() / 1000 - s.last_message_at) : null;
   const isLive = secondsSinceLastMessage !== null && secondsSinceLastMessage < 120;
-  badge.textContent = isLive ? 'Live — receiving BGP updates' : 'Not currently running';
+  badge.textContent = isLive ? 'Live: receiving BGP updates' : 'Not currently running';
   badge.className = 'live-badge' + (isLive ? ' live' : '');
 
   // Average over the last 5 complete-ish minutes, across all tracked ASNs.

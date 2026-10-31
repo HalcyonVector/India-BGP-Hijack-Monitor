@@ -110,10 +110,13 @@
   directly and comparing against what the deployed instance saw. Root
   cause: Render's deploy checkout is a shallow git clone, so local git
   commands on the deployed filesystem structurally cannot see history that
-  exists on GitHub. Fixed by querying the GitHub REST API directly instead
-  of local git (cached in-memory for 10 minutes to stay under GitHub's
-  60/hour unauthenticated rate limit) — verified producing identical real
-  drift numbers locally and on live Render after the fix.
+  exists on GitHub. The first fix queried the GitHub REST API instead, which
+  worked until the history passed ~60 commits: a cold start (frequent on
+  Render's free tier, which sleeps) needed one call per commit, so it hit
+  GitHub's 60/hour unauthenticated limit every time and the dashboard showed
+  "GitHub API unavailable". Now `refresh-baseline.yml` appends each
+  snapshot to `docs/baseline-history.json`, and the endpoint reads that
+  committed file: no network calls, no rate limit.
 - **The scheduled (cron) GitHub Actions workflows have not been reliably
   firing on schedule.** `refresh-baseline.yml` (daily) and
   `refresh-rpki-coverage.yml` (weekly) both had their cron times offset a

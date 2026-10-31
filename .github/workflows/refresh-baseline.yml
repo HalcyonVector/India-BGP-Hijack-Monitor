@@ -46,12 +46,24 @@ jobs:
           with open("docs/baseline-summary.json", "w") as f:
               json.dump(summary, f, indent=2)
           print(json.dumps(summary, indent=2))
+
+          # Append to the history the drift endpoint reads (a plain file, so
+          # the deployed app needs no GitHub API calls). ~200 bytes a day.
+          try:
+              with open("docs/baseline-history.json") as f:
+                  history = json.load(f)
+          except FileNotFoundError:
+              history = []
+          history.append(summary)
+          with open("docs/baseline-history.json", "w") as f:
+              json.dump(history, f, separators=(",", ":"))
+              f.write("\n")
           PY
 
       - name: Commit updated baseline summary
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/baseline-summary.json
+          git add docs/baseline-summary.json docs/baseline-history.json
           git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh baseline summary"
           git push

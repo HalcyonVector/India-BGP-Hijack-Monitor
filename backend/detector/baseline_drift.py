@@ -1,106 +1,67 @@
 """
-Reads the commit history of docs/baseline-summary.json (committed daily by
-.github/workflows/refresh-baseline.yml, or manually) and reports per-ASN
-prefix count drift between snapshots. This is the "is this data going
+Reports per-ASN prefix count drift between the oldest and newest baseline
+snapshots in docs/baseline-history.json. This is the "is this data going
 stale, and how fast" signal.
 
-Needs at least 2 historical commits of the summary file to show real drift;
-with only 1 it reports that plainly instead of fabricating a trend.
+refresh-baseline.yml appends one snapshot per run (the same data it writes
+to docs/baseline-summary.json) and commits it, so the deployed checkout
+always carries the full history as a plain file. Needs at least 2 snapshots
+to show real drift; with fewer it says so instead of fabricating a trend.
 
-Uses the GitHub REST API instead of local `git log`/`git show`. Found via
-live verification, not assumed: on Render, this always reported "1
-snapshot" no matter how many real commits existed on GitHub, because
-Render's deploy checkout doesn't carry full git history (shallow clone) --
-local `git log` on the deployed filesystem genuinely can't see prior
-commits. Querying GitHub's API directly works the same locally and
-deployed, since it doesn't depend on the local clone's depth at all.
-Results are cached in-memory for CACHE_TTL_SECONDS to stay well under
-GitHub's 60/hour unauthenticated rate limit even if this endpoint is
-polled frequently. Each snapshot's contents are also cached by commit SHA
-forever (a commit never changes), so a refresh costs one API call plus one
-per *new* commit -- not one per commit in the whole history, which grew
-by one a day and blew through the limit within weeks. A failed refresh
-serves the last good result and waits a full TTL before retrying.
+History of how this got here, found via live verification:
+- Local `git log` never worked on Render: the deploy checkout is shallow,
+  so it always saw 1 snapshot.
+- Querying the GitHub REST API instead worked until the history grew. A
+  cold start (frequent on Render's free tier, which sleeps) cost one call
+  for the commit list plus one per commit, ~110 calls against the 60/hour
+  unauthenticated limit, so it failed every time.
+Reading a committed file needs no network and has no rate limit.
 """
-import base64
 import json
 import sys
-import time
 from pathlib import Path
-
-import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-GITHUB_REPO = "HalcyonVector/India-BGP-Hijack-Monitor"
-SUMMARY_PATH = "docs/baseline-summary.json"
-GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
-CACHE_TTL_SECONDS = 1800
+HISTORY_PATH = Path(__file__).parent.parent.parent / "docs" / "baseline-history.json"
 
-_cache = {"result": None, "fetched_at": 0}
-_snapshot_by_sha = {}
+_cache = {"mtime": None, "result": None}
 
 
-def _github_get(url, params=None):
-    resp = requests.get(url, params=params, timeout=15,
-                         headers={"Accept": "application/vnd.github+json"})
-    resp.raise_for_status()
-    return resp.json()
-
-
-def get_historical_snapshots():
-    """Return [(commit_sha_short, commit_date, summary_dict), ...] oldest first."""
-    commits = _github_get(f"{GITHUB_API}/commits", params={"path": SUMMARY_PATH, "per_page": 100})
-    snapshots = []
-    for commit in reversed(commits):  # API returns newest first; we want oldest first
-        sha = commit["sha"]
-        date = commit["commit"]["committer"]["date"]
-        if sha not in _snapshot_by_sha:
-            try:
-                file_data = _github_get(f"{GITHUB_API}/contents/{SUMMARY_PATH}", params={"ref": sha})
-                content = base64.b64decode(file_data["content"]).decode("utf-8")
-                _snapshot_by_sha[sha] = json.loads(content)
-            except (requests.RequestException, KeyError, json.JSONDecodeError):
-                continue
-        snapshots.append((sha[:8], date, _snapshot_by_sha[sha]))
-    return snapshots
+def load_snapshots():
+    """Return [{generated_at_utc, total_prefixes, per_asn}, ...] oldest first."""
+    try:
+        snapshots = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"{HISTORY_PATH.name} is not valid JSON: {e}") from e
+    return sorted(snapshots, key=lambda s: s.get("generated_at_utc") or "")
 
 
 def compute_drift(use_cache=True):
-    now = time.monotonic()
-    fresh = (now - _cache["fetched_at"]) < CACHE_TTL_SECONDS
-    if use_cache and fresh and _cache["result"] is not None:
-        return _cache["result"]
-    if use_cache and fresh and _cache.get("error"):
-        raise RuntimeError(_cache["error"])
-
     try:
-        result = _compute_drift_uncached()
-    except requests.RequestException as e:
-        _cache["fetched_at"] = now  # back off for a full TTL either way
-        if _cache["result"] is not None:
-            return _cache["result"]
-        _cache["error"] = (f"GitHub API unavailable ({e.__class__.__name__}); "
-                           f"retrying in {CACHE_TTL_SECONDS // 60} min")
-        raise RuntimeError(_cache["error"]) from e
-    _cache["error"] = None
-    _cache["result"] = result
-    _cache["fetched_at"] = now
+        mtime = HISTORY_PATH.stat().st_mtime
+    except FileNotFoundError:
+        mtime = None
+    if use_cache and _cache["result"] is not None and _cache["mtime"] == mtime:
+        return _cache["result"]
+    result = _compute_drift_uncached()
+    _cache.update(mtime=mtime, result=result)
     return result
 
 
 def _compute_drift_uncached():
-    snapshots = get_historical_snapshots()
+    snapshots = load_snapshots()
     if len(snapshots) < 2:
         return {
             "status": "insufficient_history",
-            "message": f"Only {len(snapshots)} snapshot(s) of {SUMMARY_PATH} on GitHub -- "
+            "message": f"Only {len(snapshots)} snapshot(s) in docs/{HISTORY_PATH.name} -- "
                        f"drift needs at least 2. refresh-baseline.yml adds one per day.",
             "snapshots": len(snapshots),
         }
 
-    oldest_hash, oldest_date, oldest = snapshots[0]
-    newest_hash, newest_date, newest = snapshots[-1]
+    oldest, newest = snapshots[0], snapshots[-1]
     oldest_per_asn = oldest.get("per_asn", {})
     newest_per_asn = newest.get("per_asn", {})
 
@@ -114,11 +75,11 @@ def _compute_drift_uncached():
     return {
         "status": "ok",
         "snapshots": len(snapshots),
-        "compared": {"from": f"{oldest_date} ({oldest_hash})", "to": f"{newest_date} ({newest_hash})"},
+        "compared": {"from": oldest.get("generated_at_utc"), "to": newest.get("generated_at_utc")},
         "total_before": oldest.get("total_prefixes"),
         "total_after": newest.get("total_prefixes"),
         "total_history": [
-            {"date": date, "total": s.get("total_prefixes")} for _, date, s in snapshots
+            {"date": s.get("generated_at_utc"), "total": s.get("total_prefixes")} for s in snapshots
         ],
         "per_asn_drift": drift,
     }

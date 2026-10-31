@@ -16,23 +16,38 @@ from backend.detector.targets import TRACKED_ASNS
 from db import store
 
 RIPESTAT_URL = "https://stat.ripe.net/data/announced-prefixes/data.json"
+MAX_ATTEMPTS = 4
 
 
 def fetch_announced_prefixes(asn):
-    resp = requests.get(RIPESTAT_URL, params={"resource": f"AS{asn}"}, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    prefixes = data.get("data", {}).get("prefixes", [])
-    return [p["prefix"] for p in prefixes]
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.get(RIPESTAT_URL, params={"resource": f"AS{asn}"}, timeout=45)
+            resp.raise_for_status()
+            data = resp.json()
+            prefixes = data.get("data", {}).get("prefixes", [])
+            return [p["prefix"] for p in prefixes]
+        except requests.exceptions.RequestException as e:
+            if attempt == MAX_ATTEMPTS:
+                raise
+            backoff = 2 ** attempt
+            print(f"  AS{asn}: {e} (attempt {attempt}/{MAX_ATTEMPTS}, retrying in {backoff}s)")
+            time.sleep(backoff)
 
 
 def build_baseline():
     store.init_db()
     conn = store.get_connection()
     total = 0
+    failed = []
     try:
         for asn, name in TRACKED_ASNS.items():
-            prefixes = fetch_announced_prefixes(asn)
+            try:
+                prefixes = fetch_announced_prefixes(asn)
+            except requests.exceptions.RequestException as e:
+                print(f"  AS{asn} ({name}): FAILED after {MAX_ATTEMPTS} attempts -- {e}")
+                failed.append(asn)
+                continue
             store.replace_baseline(conn, asn, prefixes)
             conn.commit()
             print(f"  AS{asn} ({name}): {len(prefixes)} prefixes")
@@ -40,9 +55,12 @@ def build_baseline():
             time.sleep(0.5)  # be polite to the free API
     finally:
         conn.close()
-    return total
+    return total, failed
 
 
 if __name__ == "__main__":
-    n = build_baseline()
-    print(f"Baseline built: {n} total prefixes across {len(TRACKED_ASNS)} tracked ASNs.")
+    n, failed = build_baseline()
+    print(f"Baseline built: {n} total prefixes across {len(TRACKED_ASNS) - len(failed)} tracked ASNs.")
+    if failed:
+        print(f"Failed to fetch {len(failed)} ASN(s) after retries: {failed}")
+        sys.exit(1)

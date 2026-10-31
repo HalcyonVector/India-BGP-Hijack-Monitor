@@ -11,7 +11,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from backend.detector.monitor import build_expected_lookup, find_expected_asn, origin_asn_from_path
+from backend.detector.monitor import (
+    build_expected_lookup, classify_announcement, collapse_path, find_expected_asn, origin_asn_from_path, severity_for,
+    upstream_from_path,
+)
 from db import store
 
 
@@ -48,6 +51,23 @@ def run_tests():
     asn, kind = find_expected_asn("157.32.0.0/12", exact, networks)
     is_flagged = asn is not None and asn != fake_origin
     results.append(("fabricated exact-prefix hijack correctly flagged", is_flagged and kind == "exact"))
+
+    # 6. Severity uses RIPEstat's real status strings. It never returns a bare
+    # 'invalid' -- an exact match on that once meant nothing could go critical.
+    ok = (severity_for("invalid_asn") == "critical" and severity_for("invalid_length") == "critical"
+          and severity_for("valid") == "info" and severity_for("unknown") == "warning"
+          and severity_for(None) == "warning")
+    results.append(("severity: invalid_asn/invalid_length -> critical, valid -> info", ok))
+
+    # 7. Upstream extraction ignores AS-path prepending
+    ok = (collapse_path([3356, 9498, 9498, 9498]) == [3356, 9498]
+          and upstream_from_path([5394, 57463, 9498, 9498]) == 57463
+          and upstream_from_path([9498]) is None)
+    results.append(("upstream = hop before origin, prepends collapsed", ok))
+
+    # 8. Airtel's sibling ASN announcing Airtel space is not a hijack
+    v = classify_announcement(sub_prefix, 9498, exact, networks)
+    results.append(("sibling ASN (AS9498 on AS24560 space) not flagged", v is not None and not v["flagged"]))
 
     all_pass = True
     for name, ok in results:

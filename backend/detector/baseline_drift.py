@@ -16,7 +16,11 @@ commits. Querying GitHub's API directly works the same locally and
 deployed, since it doesn't depend on the local clone's depth at all.
 Results are cached in-memory for CACHE_TTL_SECONDS to stay well under
 GitHub's 60/hour unauthenticated rate limit even if this endpoint is
-polled frequently.
+polled frequently. Each snapshot's contents are also cached by commit SHA
+forever (a commit never changes), so a refresh costs one API call plus one
+per *new* commit -- not one per commit in the whole history, which grew
+by one a day and blew through the limit within weeks. A failed refresh
+serves the last good result and waits a full TTL before retrying.
 """
 import base64
 import json
@@ -31,9 +35,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 GITHUB_REPO = "HalcyonVector/India-BGP-Hijack-Monitor"
 SUMMARY_PATH = "docs/baseline-summary.json"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
-CACHE_TTL_SECONDS = 600
+CACHE_TTL_SECONDS = 1800
 
 _cache = {"result": None, "fetched_at": 0}
+_snapshot_by_sha = {}
 
 
 def _github_get(url, params=None):
@@ -50,21 +55,35 @@ def get_historical_snapshots():
     for commit in reversed(commits):  # API returns newest first; we want oldest first
         sha = commit["sha"]
         date = commit["commit"]["committer"]["date"]
-        try:
-            file_data = _github_get(f"{GITHUB_API}/contents/{SUMMARY_PATH}", params={"ref": sha})
-            content = base64.b64decode(file_data["content"]).decode("utf-8")
-            snapshots.append((sha[:8], date, json.loads(content)))
-        except (requests.RequestException, KeyError, json.JSONDecodeError):
-            continue
+        if sha not in _snapshot_by_sha:
+            try:
+                file_data = _github_get(f"{GITHUB_API}/contents/{SUMMARY_PATH}", params={"ref": sha})
+                content = base64.b64decode(file_data["content"]).decode("utf-8")
+                _snapshot_by_sha[sha] = json.loads(content)
+            except (requests.RequestException, KeyError, json.JSONDecodeError):
+                continue
+        snapshots.append((sha[:8], date, _snapshot_by_sha[sha]))
     return snapshots
 
 
 def compute_drift(use_cache=True):
     now = time.monotonic()
-    if use_cache and _cache["result"] is not None and (now - _cache["fetched_at"]) < CACHE_TTL_SECONDS:
+    fresh = (now - _cache["fetched_at"]) < CACHE_TTL_SECONDS
+    if use_cache and fresh and _cache["result"] is not None:
         return _cache["result"]
+    if use_cache and fresh and _cache.get("error"):
+        raise RuntimeError(_cache["error"])
 
-    result = _compute_drift_uncached()
+    try:
+        result = _compute_drift_uncached()
+    except requests.RequestException as e:
+        _cache["fetched_at"] = now  # back off for a full TTL either way
+        if _cache["result"] is not None:
+            return _cache["result"]
+        _cache["error"] = (f"GitHub API unavailable ({e.__class__.__name__}); "
+                           f"retrying in {CACHE_TTL_SECONDS // 60} min")
+        raise RuntimeError(_cache["error"]) from e
+    _cache["error"] = None
     _cache["result"] = result
     _cache["fetched_at"] = now
     return result

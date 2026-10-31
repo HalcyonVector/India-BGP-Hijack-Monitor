@@ -26,12 +26,18 @@
   (checking all ~20k baseline prefixes would mean thousands of RIPEstat
   calls) — shown as "(sample of N)" on the dashboard rather than presented
   as a precise figure.
-- **Verified precision, not recall, against real live traffic.** A 60-second
-  live run against real BGP traffic processed 59 real messages and flagged
-  zero false positives — confirms the detector doesn't cry wolf on normal
-  announcements. It did NOT observe an actual real hijack live (none
+- **Verified precision, not recall, against real live traffic.** An earlier
+  60-second run reported "59 messages, zero false positives", but that was
+  hollow: the handler read `announcement["prefix"]` while RIS Live sends a
+  `prefixes` list, so a swallowed `KeyError` skipped every announcement.
+  After the fix, a ~15-minute run (~48k prefix updates) flagged real
+  origin differences, nearly all of them RPKI-authorized customer
+  sub-blocks (now `info`), plus a few no-ROA cases (`warning`). Airtel's
+  two ASNs announcing each other's space were false positives, now handled
+  as siblings in `targets.py`. Other multi-ASN companies may need adding
+  there too. It did NOT observe an actual real hijack live (none
   occurred in that window), so recall (does it actually catch a real
-  hijack when one happens) is verified via 5 unit tests against fabricated
+  hijack when one happens) is verified via unit tests against fabricated
   fixtures (`backend/detector/test_detection_logic.py`), not a real
   incident. Be precise about this distinction if presenting the project.
 - **Baseline staleness is now partially, not fully, automated.**

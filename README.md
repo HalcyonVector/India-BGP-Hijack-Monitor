@@ -17,14 +17,16 @@ Watches real-time BGP route announcements for 9 major Indian networks (Airtel, J
 Real numbers from running this, not projections:
 
 - **RPKI coverage varies 40%→100% by ISP.** Sampling 30 prefixes per ASN against live RIPEstat data: Bharti Airtel's primary block (AS24560) sits at just **40%** ROA coverage, while Jio, BSNL, ACT Fibernet, and Tata Communications are all at **100%**. Same country, same regulatory environment, wildly different RPKI adoption.
-- **Zero false positives across real traffic.** Live-tested against real BGP updates (thousands of messages processed) with zero incorrect hijack flags.
-- **Detection logic verified two ways**: 5/5 unit tests against fabricated hijack fixtures (proves it *would* catch a real one), plus live-traffic precision testing (proves it doesn't cry wolf on normal traffic) — a real hijack wasn't observed live, and that distinction is stated plainly rather than implied away.
+- **The earlier "zero false positives" result was wrong, and here's why.** The monitor read `announcement["prefix"]`, but RIS Live sends `announcement["prefixes"]` (a list). Every message raised a `KeyError` that websocket-client silently swallowed, so the detector never inspected a single prefix. Zero flags meant zero checks. Fixed, and the monitor now logs handler errors loudly.
+- **Once it actually ran, a different origin turned out to be normal, not alarming.** In a ~15-minute live run (~48,000 prefix updates), most "wrong origin" announcements were Indian businesses (Canara Bank, Powergrid, Wipro, Morgan Stanley's India arm) announcing sub-blocks of their ISP's space, each **explicitly authorized by an RPKI ROA**. Those are now graded `info`. What's left as `warning` is the genuinely unverifiable case, e.g. AS135709 (Lightstorm) originating a /24 inside Sify's space with no ROA either way.
+- **RPKI "invalid" never escalated anything.** RIPEstat reports `invalid_asn` / `invalid_length`, never a bare `invalid`, so the `== "invalid"` check could never fire. A Pakistan Telecom (AS17557) announcement of Airtel's block now correctly comes out **critical** (try it in the dashboard's "Try the Detector" panel).
+- **Detection logic is unit-tested against fabricated fixtures** (exact and more-specific hijacks, sibling ASNs, RIPEstat's real RPKI status strings). A real hijack hasn't been observed live, and that distinction is stated plainly rather than implied away.
 
 ---
 
 ## Disclaimer
 
-Educational/portfolio project, not a production security tool. Detection coverage is partial (the ~8 largest blocks per tracked ASN, not full coverage — see Known Limitations). Verified for precision against real BGP traffic (zero false positives in a live run) and for logic correctness against fabricated hijack fixtures (5/5 unit tests) — not against a real hijack, since none occurred during testing. No credentials, no paid APIs, no outbound alerting anywhere in this project.
+Educational/portfolio project, not a production security tool. Detection coverage is partial (the ~8 largest blocks per tracked ASN, not full coverage — see Known Limitations). Run against real BGP traffic (where every flag so far has been RPKI-authorized or unverifiable, not a hijack) and unit-tested against fabricated hijack fixtures, but not against a real hijack, since none occurred during testing. No credentials, no paid APIs, no outbound alerting anywhere in this project.
 
 ---
 
@@ -35,21 +37,26 @@ Educational/portfolio project, not a production security tool. Detection coverag
 - Real-time subscription to RIPE RIS Live, filtered by prefix, not AS path — a hijacker's path never contains the victim's ASN, so path filtering would miss real hijacks
 - Baseline comparison: each tracked ASN's currently-announced prefixes (RIPEstat) act as ground truth; a live announcement by a different origin ASN gets flagged
 - More-specific detection: `moreSpecific: true` subscriptions catch a /24 hijacked out of a normally /16 block, not just exact-prefix mismatches
-- RPKI cross-check on every flagged event where a ROA exists; an explicit "invalid" result escalates severity to critical
+- RPKI cross-check on every flagged event grades severity: ROA-authorized origin → `info` (usually a customer's provider-assigned sub-block), no ROA → `warning`, ROA rejects the origin (`invalid_asn` / `invalid_length`) → `critical`
+- Sibling ASNs of the same company (Airtel's AS24560 / AS9498) count as the same owner, not as hijacks of each other
+- Repeat announcements of the same (prefix, origin) are logged once per 6h, not on every re-announcement
 - Observed hijacker ASN is resolved to its holder org name (RIPEstat as-overview) on every event, not left as a bare number
 - `baseline_drift.py` / `/api/baseline-drift` reads the git history of the daily-committed baseline summary and reports real per-ASN prefix count changes over time
 
 ### Backend & API
 
-- FastAPI, read-only (`/api/status`, `/api/asns`, `/api/events`), CORS-enabled
+- FastAPI, read-only (`/api/status`, `/api/asns`, `/api/events`, `/api/live`, `/api/check`), CORS-enabled
 - SQLite: `baseline_prefixes`, `events`, `monitor_status` — no external database
 - Events tagged `info` / `warning` / `critical`
 
 ### Frontend
 
-- Stat tiles (baseline prefixes, tracked ASNs, messages processed, events flagged), auto-refresh every 15s
-- Live/not-running status badge based on time since the last processed message
-- Tracked-ASN grid, filterable event table
+- **Live BGP feed**: the real route updates the monitor sees, with each AS path drawn hop-by-hop and the RIS collector that heard it
+- **Per-minute activity chart** (announcements vs. withdrawals, last 60 min) and each ISP's share of the traffic
+- **Who Carries India's Routes**: an interactive graph of the upstream networks observed handing each ISP's routes to the rest of the internet (Arelion, Cogent, GTT, Tata…)
+- **Try the Detector**: type any prefix + origin ASN (or pick a preset, like a Pakistan Telecom-style hijack of Airtel) and step through exactly what the monitor would decide, including a live RPKI lookup
+- Stat tiles with per-severity event counts, per-ISP cards with activity sparklines and top upstream, events table with a short "why" tag per row
+- Frosted-glass theme with a single accent colour; amber/red appear only for warnings and critical findings; auto-refresh every 15s
 
 ### RPKI Coverage
 
@@ -66,8 +73,7 @@ Educational/portfolio project, not a production security tool. Detection coverag
 ### Verification
 
 - `test_detection_logic.py` — 5 fixtures against real Airtel/Jio blocks with synthetic wrong-origin scenarios
-- `test_api.py` — 7 checks against the live FastAPI endpoints themselves (response shape, severity filtering, limit validation, empty-history handling), not just the detection logic
-- Monitor has been run against real BGP traffic and confirmed to process real messages with zero false positives
+- `test_api.py`: 11 checks against the FastAPI endpoints themselves (response shape, severity filtering, limit validation, empty-history handling, `/api/live` shape, `/api/check` verdicts and input validation), not just the detection logic
 
 ---
 
@@ -134,7 +140,8 @@ workaround.
 
 1. **Baseline** — fetch each tracked ASN's currently-announced prefixes from RIPEstat.
 2. **Live monitor** — subscribe to RIS Live filtered by prefix (the ~8 largest blocks per ASN, `moreSpecific: true`).
-3. **Compare** — observed origin ASN vs. the baseline's expected owner. Mismatch → event, with an RPKI check where a ROA exists.
+3. **Compare** — observed origin ASN vs. the baseline's expected owner (siblings count as the same owner). Mismatch → event, graded by RPKI.
+   Every other update for tracked space is recorded too (bounded: 24h of per-minute counts, the newest 300 updates), which is what drives the live panels.
 4. **Serve** — FastAPI reads SQLite; the dashboard polls every 15s.
 
 ---
@@ -191,6 +198,8 @@ India-BGP-Hijack-Monitor/
 | GET | `/api/asns` | Tracked ASNs with per-ASN baseline prefix counts and RPKI coverage |
 | GET | `/api/events` | Recent events, optional `?severity=` and `?limit=` (default 50, max 500) |
 | GET | `/api/baseline-drift` | Per-ASN prefix count drift between the oldest and newest committed baseline summary |
+| GET | `/api/live` | Rolling feed of real updates, per-ASN per-minute activity (last 60 min), observed upstream ASNs |
+| GET | `/api/check?prefix=&origin=` | Runs the monitor's detection logic on a hypothetical announcement. Read-only; nothing is logged |
 
 ---
 
@@ -246,7 +255,7 @@ No environment variables or API keys. `backend/detector/targets.py` holds the tr
 
 ```bash
 python backend/detector/test_detection_logic.py   # detection logic: 5 fixture-based checks
-python backend/test_api.py                         # API endpoints: 7 checks against the real FastAPI app
+python backend/test_api.py                         # API endpoints: 11 checks against the real FastAPI app
 ```
 
 Detection logic: legitimate exact match, legitimate sub-prefix, fabricated exact-prefix hijack, fabricated sub-prefix hijack, unrelated prefix correctly ignored. API tests: response shape, severity filtering, limit validation (rejects over-max instead of silently truncating), empty-history handling. No live traffic or API keys required for either. Both run in CI on every push.

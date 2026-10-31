@@ -16,3 +16,14 @@ TRACKED_ASNS = {
     9583: "Sify Limited",
     24186: "RailTel Corporation of India Ltd",
 }
+
+# ASNs run by the same company. One announcing the other's space is internal
+# traffic engineering, not a hijack -- found live: AS24560 originates /24s
+# out of AS9498's blocks (and vice versa) all day.
+SIBLING_GROUPS = [
+    {24560, 9498},  # Bharti Airtel
+]
+
+
+def same_org(a, b):
+    return a == b or any(a in g and b in g for g in SIBLING_GROUPS)

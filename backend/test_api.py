@@ -64,6 +64,34 @@ def run_tests():
         ok = r.status_code == 200 and "status" in r.json()
         results.append(("GET /api/baseline-drift always has a status field", ok))
 
+        # /api/live has one activity series per tracked ASN, sized to the window
+        r = client.get("/api/live")
+        ok = r.status_code == 200
+        data = r.json() if ok else {}
+        ok = ok and all(k in data for k in ("feed", "activity", "upstreams", "window_minutes"))
+        ok = ok and len(data.get("activity", [])) == len(TRACKED_ASNS)
+        ok = ok and all(len(a["announcements"]) == data["window_minutes"] for a in data.get("activity", []))
+        results.append(("GET /api/live returns feed, per-ASN activity and upstreams", ok))
+
+        # /api/check: legit owner is not flagged (rpki=false keeps it offline)
+        r = client.get("/api/check", params={"prefix": "157.32.0.0/12", "origin": 55836, "rpki": False})
+        ok = r.status_code == 200 and r.json().get("tracked") and not r.json().get("flagged")
+        results.append(("GET /api/check: Jio announcing its own block is not flagged", ok))
+
+        # /api/check: fabricated more-specific hijack is flagged the same way the monitor would
+        r = client.get("/api/check", params={"prefix": "122.160.5.0/28", "origin": 64512, "rpki": False})
+        data = r.json() if r.status_code == 200 else {}
+        ok = data.get("flagged") and data.get("event_type") == "unexpected_more_specific" \
+            and data.get("expected_asn") == 24560
+        results.append(("GET /api/check: fabricated sub-prefix hijack is flagged", bool(ok)))
+
+        # /api/check: untracked space is ignored, garbage input is rejected
+        r = client.get("/api/check", params={"prefix": "8.8.8.0/24", "origin": 15169, "rpki": False})
+        ok = r.status_code == 200 and r.json().get("tracked") is False
+        r = client.get("/api/check", params={"prefix": "not-a-prefix", "origin": 1, "rpki": False})
+        ok = ok and r.status_code == 422
+        results.append(("GET /api/check ignores untracked space and rejects bad input", ok))
+
     all_pass = True
     for name, ok in results:
         print(f"  [{'PASS' if ok else 'FAIL'}] {name}")

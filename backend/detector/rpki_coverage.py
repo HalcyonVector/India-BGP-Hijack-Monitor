@@ -94,7 +94,8 @@ def compute_coverage_for_asn(conn, asn, sample_size=SAMPLE_SIZE):
     covered = 0
     for prefix in sample:
         status = check_rpki(asn, prefix)
-        if status in ("valid", "invalid"):
+        # a ROA exists either way; RIPEstat reports invalid as invalid_asn / invalid_length
+        if status == "valid" or (status or "").startswith("invalid"):
             covered += 1
         time.sleep(0.3)  # be polite to the free API
     return len(sample), covered

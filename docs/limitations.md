@@ -16,10 +16,11 @@
   filters by prefix instead, which correctly surfaces an announcement of
   your address space regardless of who originates it.
 - **RPKI coverage is inconsistent for Indian address space, and varies
-  sharply by ASN.** `rpki_coverage.py` sampled 30 baseline prefixes per
-  tracked ASN and found real coverage from **40%** (Bharti Airtel Ltd's
-  primary block, AS24560) up to **100%** (Jio, BSNL, ACT Fibernet, Tata
-  Communications) — confirmed live, not estimated. This means RPKI can
+  sharply by ASN.** `rpki_coverage.py` samples 30 baseline prefixes per
+  tracked ASN. The latest weekly sample (2026-10-26) found real coverage
+  from **63%** (Bharti Airtel Ltd's primary block, AS24560) up to **100%**
+  (Jio, BSNL, Vodafone Idea), with the rest between 87% and 97%. An
+  earlier sample had AS24560 as low as 40%. This means RPKI can
   strongly corroborate a hijack for some ASNs and barely help for others.
   Detection here is baseline (origin-ASN) comparison first, RPKI second.
   The coverage number itself is a 30-prefix sample per ASN, not exhaustive

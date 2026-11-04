@@ -66,4 +66,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/baseline-summary.json docs/baseline-history.json
           git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh baseline summary"
-          git push
+          # Retry the push: on 2026-11-04 a GitHub Git Operations outage failed
+          # this step after the baseline had built and passed its tests.
+          for attempt in 1 2 3 4; do
+            git push && exit 0
+            [ "$attempt" = 4 ] && break
+            wait=$((30 * 2 ** (attempt - 1)))
+            echo "push failed (attempt $attempt of 4), retrying in ${wait}s"
+            sleep "$wait"
+            git pull --rebase origin "$GITHUB_REF_NAME" || { git rebase --abort 2>/dev/null; true; }
+          done
+          echo "push failed after 4 attempts"
+          exit 1

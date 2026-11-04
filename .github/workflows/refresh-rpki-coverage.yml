@@ -59,4 +59,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/rpki-coverage-summary.json
           git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh RPKI coverage summary"
-          git push
+          # Retry the push so a short GitHub outage doesn't fail the whole run
+          # (same fix as refresh-baseline.yml, after the 2026-11-04 outage).
+          for attempt in 1 2 3 4; do
+            git push && exit 0
+            [ "$attempt" = 4 ] && break
+            wait=$((30 * 2 ** (attempt - 1)))
+            echo "push failed (attempt $attempt of 4), retrying in ${wait}s"
+            sleep "$wait"
+            git pull --rebase origin "$GITHUB_REF_NAME" || { git rebase --abort 2>/dev/null; true; }
+          done
+          echo "push failed after 4 attempts"
+          exit 1

@@ -1,14 +1,12 @@
 # India BGP Hijack Monitor: Live Route-Integrity Watch for India's Internet
 
-[![tests](https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/actions/workflows/test.yml/badge.svg)](https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/actions/workflows/test.yml)
-
 A live monitor for the routing layer of India's internet. It listens to the real global BGP feed from RIPE's route collectors, watches every announcement touching the address space of 9 networks run by India's largest ISPs (Airtel, Jio, BSNL, ACT Fibernet, Vodafone Idea, Tata Communications, Sify and RailTel), and flags any announcement whose origin isn't the network that owns that space. Each flag is graded by RPKI: authorized by a ROA, unverifiable, or actively rejected. Every other update for that space is recorded too, so the dashboard shows the real traffic the detector is reading, not just the rare alarms.
 
-Built with FastAPI, SQLite and a single-file vanilla JS dashboard, entirely on free, keyless public data (RIPE RIS Live and RIPEstat), running for $0/month on Render and GitHub Pages.
+Built with FastAPI, SQLite and a single-file vanilla JS dashboard on keyless public data (RIPE RIS Live and RIPEstat), hosted on Render and GitHub Pages.
 
 > **What it's for:** leave it open and watch real route updates for Indian address space stream past, hop by hop, with every one checked against who should be announcing it. Or type in any prefix and AS number and see exactly what the detector would decide, and why.
 
-**Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) (backend on Render's free tier, which sleeps when idle, so the first load can take ~30s)
+**Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) (the backend on Render sleeps when idle, so the first load can take ~30s)
 
 ![Dashboard: heading card and overview](docs/screenshots/dashboard.png)
 
@@ -108,7 +106,7 @@ A dark, matte dashboard with one accent colour. Everything is blue or a shade of
 | **Frontend** | Vanilla HTML/CSS/JS | One file, no framework, no build step; hand-drawn SVG chart and graph |
 | **Testing** | FastAPI TestClient (httpx2) | Endpoint tests plus fixture-based detection tests |
 | **CI / Scheduling** | GitHub Actions | Tests on every push; daily baseline and weekly RPKI refresh jobs commit their results |
-| **Hosting** | Render (free) + GitHub Pages | $0/month |
+| **Hosting** | Render + GitHub Pages | Backend on Render, static frontend on GitHub Pages |
 
 ---
 
@@ -286,7 +284,7 @@ Full detail, including past bugs and how they were found, in [docs/limitations.m
 - **It detects origin hijacks, not route leaks.** It checks *who originates* a prefix. A leak where the origin is correct but the path is wrong (a network re-announcing routes it shouldn't) isn't detected.
 - **It hasn't caught a real hijack.** Recall is tested with fabricated fixtures; precision has been tested against real traffic. Those are different claims, and only the second has been seen live.
 - **RPKI coverage figures are a 30-prefix sample per network**, not an exhaustive count, and refresh weekly.
-- **Render's free tier has no persistent disk.** A restart wipes events and live activity. The baseline and RPKI coverage rebuild themselves on boot; event history genuinely resets, and no fake history is seeded to hide that.
+- **The Render deployment has no persistent disk.** A restart wipes events and live activity. The baseline and RPKI coverage rebuild themselves on boot; event history genuinely resets, and no fake history is seeded to hide that.
 - **One collector, no redundancy.** The monitor is a single process on a single machine.
 - **No outbound alerting.** The dashboard is the only output.
 - **The scheduled GitHub Actions jobs don't always fire on time**, which can delay a baseline refresh by hours (see docs/limitations.md).
@@ -312,6 +310,6 @@ GitHub: [@HalcyonVector](https://github.com/HalcyonVector)
 
 ---
 
-## 📄 License
+## License
 
 MIT License. See [LICENSE](./LICENSE). Free to use, modify, and distribute, with no warranty.

@@ -1,20 +1,20 @@
 {
-  "generated_at_utc": "2026-11-02T12:25:05Z",
+  "generated_at_utc": "2026-11-09T12:55:02Z",
   "per_asn": {
     "4755": {
       "sample_size": 30,
-      "covered_count": 28,
-      "covered_pct": 93.3
+      "covered_count": 29,
+      "covered_pct": 96.7
     },
     "9498": {
       "sample_size": 30,
-      "covered_count": 28,
-      "covered_pct": 93.3
+      "covered_count": 27,
+      "covered_pct": 90.0
     },
     "9583": {
       "sample_size": 30,
-      "covered_count": 28,
-      "covered_pct": 93.3
+      "covered_count": 26,
+      "covered_pct": 86.7
     },
     "9829": {
       "sample_size": 30,
@@ -28,13 +28,13 @@
     },
     "24309": {
       "sample_size": 30,
-      "covered_count": 29,
-      "covered_pct": 96.7
+      "covered_count": 30,
+      "covered_pct": 100.0
     },
     "24560": {
       "sample_size": 30,
-      "covered_count": 20,
-      "covered_pct": 66.7
+      "covered_count": 15,
+      "covered_pct": 50.0
     },
     "55410": {
       "sample_size": 30,
@@ -43,8 +43,8 @@
     },
     "55836": {
       "sample_size": 30,
-      "covered_count": 30,
-      "covered_pct": 100.0
+      "covered_count": 29,
+      "covered_pct": 96.7
     }
   }
 }

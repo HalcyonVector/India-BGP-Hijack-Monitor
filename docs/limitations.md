@@ -10,22 +10,22 @@
   scoping trade-off, not an oversight.
 - **Filtering is prefix-based, not path-based, and that distinction matters.**
   An earlier draft of this project considered filtering RIS Live by "path
-  contains my ASN" — that's wrong for hijack detection: a hijacker
+  contains my ASN". That's wrong for hijack detection: a hijacker
   announcing your prefix has a path that does NOT contain your ASN at all,
   so path-based filtering would silently miss real hijacks. This monitor
   filters by prefix instead, which correctly surfaces an announcement of
   your address space regardless of who originates it.
 - **RPKI coverage is inconsistent for Indian address space, and varies
   sharply by ASN.** `rpki_coverage.py` samples 30 baseline prefixes per
-  tracked ASN. The latest weekly sample (2026-10-26) found real coverage
-  from **63%** (Bharti Airtel Ltd's primary block, AS24560) up to **100%**
-  (Jio, BSNL, Vodafone Idea), with the rest between 87% and 97%. An
-  earlier sample had AS24560 as low as 40%. This means RPKI can
+  tracked ASN. The latest weekly sample (2026-11-09) found real coverage
+  from **50%** (Bharti Airtel Ltd's primary block, AS24560) up to **100%**
+  (BSNL, ACT Fibernet, Vodafone Idea, RailTel), with the rest between 87%
+  and 97%. Earlier samples had AS24560 anywhere from 40% to 63%. This means RPKI can
   strongly corroborate a hijack for some ASNs and barely help for others.
   Detection here is baseline (origin-ASN) comparison first, RPKI second.
   The coverage number itself is a 30-prefix sample per ASN, not exhaustive
   (checking all ~20k baseline prefixes would mean thousands of RIPEstat
-  calls) — shown as "(sample of N)" on the dashboard rather than presented
+  calls), so it is shown as "(sample of N)" on the dashboard rather than presented
   as a precise figure.
 - **Verified precision, not recall, against real live traffic.** An earlier
   60-second run reported "59 messages, zero false positives", but that was
@@ -47,21 +47,21 @@
   `.github/workflows/refresh-baseline.yml` rebuilds the baseline daily in
   CI and commits a summary (`docs/baseline-summary.json`), which keeps the
   *repo* honest about current counts and catches RIPEstat API breakage
-  early. It does NOT update your own locally-running instance's SQLite DB
-  — that still needs a manual `baseline.py` re-run (or your own scheduled
+  early. It does NOT update your own locally-running instance's SQLite DB;
+  that still needs a manual `baseline.py` re-run (or your own scheduled
   task) to stay current for live detection.
 - **No outbound alerting.** Events are written to SQLite and shown on the
-  dashboard; there's no email/webhook/SMS alert. Deliberately out of scope
-  — sending messages on your behalf needs explicit permission each time,
+  dashboard; there's no email/webhook/SMS alert. Deliberately out of scope:
+  sending messages on your behalf needs explicit permission each time,
   and isn't needed for a demo/portfolio project.
 - **Single point of collection, though it can now persist.**
   `run_monitor.bat` + Windows Task Scheduler (`docs/scheduling.md`) lets
   the monitor auto-restart and run continuously instead of only during a
   manual session, which is what makes the dashboard's "Live" badge mean
   something over time. It's still one machine with no redundant
-  collectors — if that machine is off, nothing is being watched.
+  collectors, so if that machine is off, nothing is being watched.
 - **`monitor_status` (messages-processed counter) requires a commit after
-  every message, not just ones that flag an event** — this was a real bug
+  every message, not just ones that flag an event.** This was a real bug
   found during verification: the counter silently stayed at 0 after a real
   60s run because the DB write was only committed inside the (rare)
   event-flagging branch. Fixed in `backend/detector/monitor.py`; caught by
@@ -69,28 +69,31 @@
   was correct because it looked right.
 - **The free Render deployment sleeps after 15 minutes of no HTTP traffic**,
   which kills the monitor's WebSocket connection too, since it runs inside
-  the same process (`RUN_MONITOR_INLINE=1`, see `docs/deployment.md`). The
-  documented workaround is a free external uptime pinger (UptimeRobot /
-  cron-job.org) hitting `/api/status` every 10-14 minutes — a real
-  mitigation, not a guarantee of continuous uptime. Genuine 24/7 uptime
-  needs a paid tier, which is out of scope for this project.
+  the same process (`RUN_MONITOR_INLINE=1`, see `docs/deployment.md`), and
+  takes about 50 seconds to wake. So live monitoring only runs while someone
+  has the dashboard open. An uptime pinger is deliberately not used: Render's
+  750 free instance hours a month are shared across every free service on
+  the account, and one always-on service would use about 720 of them.
+  Instead the dashboard paints saved data (the visitor's last session, or
+  `docs/dashboard-snapshot.json`, saved daily by CI) while the server wakes,
+  and says how old it is.
 - **Render's free tier has no persistent disk add-on**, so every redeploy
-  or restart gets a fresh filesystem — the SQLite DB (baseline, events,
+  or restart gets a fresh filesystem, and the SQLite DB (baseline, events,
   RPKI coverage) resets. Two things now self-heal without any manual step:
   baseline (rebuilds automatically on boot if empty) and **RPKI coverage**
   (`backend/detector/rpki_coverage.py`'s `seed_from_committed_summary()`
   loads the last CI-committed `docs/rpki-coverage-summary.json` into the DB
-  synchronously at boot — real data available within seconds of a restart,
-  not "not yet sampled" — and with `RUN_RPKI_REFRESH_INLINE=1` set, a
+  synchronously at boot, so real data is available within seconds of a restart
+  rather than "not yet sampled", and with `RUN_RPKI_REFRESH_INLINE=1` set, a
   background thread re-samples live data to bring it fully current within
   ~5 minutes). Verified locally: wiped the RPKI table, restarted, real
   percentages were back within 3 seconds, and the preserved `checked_at`
   timestamp correctly matched the committed snapshot's real generation
   time rather than falsely claiming "just checked now". Accumulated
   **event history** still does not self-heal (there's no committed
-  snapshot of past events to seed from, by design — events are live
+  snapshot of past events to seed from, by design: events are live
   detections, not baseline/config data) and genuinely resets on redeploy.
-- **The live deployment intermittently 404s on real endpoints** — confirmed
+- **The live deployment intermittently 404s on real endpoints.** Confirmed
   live at https://india-bgp-hijack-monitor.onrender.com on 2026-07-11:
   1 of 6 rapid requests to `/api/asns` returned 404 despite the route being
   correctly registered (confirmed via `/openapi.json`); a different request
@@ -99,17 +102,15 @@
   and every failure self-resolved on the next request. Most likely cause:
   the free tier's limited shared CPU under contention between the request-
   handling event loop and the monitor's background WebSocket thread
-  (`RUN_MONITOR_INLINE=1`) — not a routing or code bug. The dashboard's
-  15-second polling naturally retries and recovers from this; a hard
-  refresh always works. If this matters for your use case, moving the
-  monitor to a separate paid worker (decoupling it from request handling)
-  would remove the contention, but that's out of scope for a free deploy.
+  (`RUN_MONITOR_INLINE=1`), not a routing or code bug. The dashboard's
+  15-second polling naturally retries and recovers from this, and a banner
+  only appears after repeated failures.
 - **Baseline drift used to be permanently broken on Render, and the root
   cause was Render-specific.** `backend/detector/baseline_drift.py`
   originally shelled out to local `git log`/`git show` to read prior
   `docs/baseline-summary.json` commits. That works fine locally but always
   reported "1 snapshot" on the live deployment no matter how many real
-  commits existed on GitHub — confirmed by checking GitHub's commit history
+  commits existed on GitHub, confirmed by checking GitHub's commit history
   directly and comparing against what the deployed instance saw. Root
   cause: Render's deploy checkout is a shallow git clone, so local git
   commands on the deployed filesystem structurally cannot see history that
@@ -128,7 +129,7 @@
   past its window when checked. The workflow file's content on GitHub was
   confirmed byte-correct (not a YAML or syntax bug), so this looks like a
   genuine GitHub Actions scheduler reliability limitation rather than a
-  repo-level bug — outside this project's control to force-fix. The
+  repo-level bug, and outside this project's control to force-fix. The
   `workflow_dispatch` manual trigger in the GitHub Actions UI remains a
   reliable fallback if a fresh snapshot is needed before the cron catches
   up.

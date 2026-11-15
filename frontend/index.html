@@ -839,9 +839,18 @@ async function loadStatus(saved) {
 
   if (!saved) {  // saved data says nothing about whether it's live right now
     const badge = document.getElementById('liveBadge');
-    const secondsSinceLastMessage = s.last_message_at ? (Date.now() / 1000 - s.last_message_at) : null;
-    const isLive = secondsSinceLastMessage !== null && secondsSinceLastMessage < 120;
-    badge.textContent = isLive ? 'Live: receiving BGP updates' : 'Not currently running';
+    const now = Date.now() / 1000;
+    const sinceMsg = s.last_message_at ? now - s.last_message_at : null;
+    const sinceStart = s.started_at ? now - s.started_at : null;
+    const isLive = sinceMsg !== null && sinceMsg < 120;
+    // Right after Render wakes, the API answers before the monitor has
+    // connected to RIS Live, so "no messages yet" is normal for a minute or two.
+    let text;
+    if (isLive) text = 'Live: receiving BGP updates';
+    else if (sinceMsg === null && (sinceStart === null || sinceStart < 300)) text = 'Server up, connecting to the BGP feed';
+    else if (sinceMsg === null) text = 'Server up, no BGP updates received yet';
+    else text = `Server up, last BGP update ${timeAgo(s.last_message_at)}`;
+    badge.textContent = text;
     badge.className = 'live-badge' + (isLive ? ' live' : '');
   }
 

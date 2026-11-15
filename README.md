@@ -1,14 +1,16 @@
 # India BGP Hijack Monitor: Live Route-Integrity Watch for India's Internet
 
-A live monitor for the routing layer of India's internet. It listens to the real global BGP feed from RIPE's route collectors, watches every announcement touching the address space of 9 networks run by India's largest ISPs (Airtel, Jio, BSNL, ACT Fibernet, Vodafone Idea, Tata Communications, Sify and RailTel), and flags any announcement whose origin isn't the network that owns that space. Each flag is graded by RPKI: authorized by a ROA, unverifiable, or actively rejected. Every other update for that space is recorded too, so the dashboard shows the real traffic the detector is reading, not just the rare alarms.
+Who is announcing India's address space right now, and should they be? This project answers that from the real global routing feed. It reads every BGP announcement RIPE's route collectors hear for the address space of 9 networks run by India's largest ISPs (Airtel, Jio, BSNL, ACT Fibernet, Vodafone Idea, Tata Communications, Sify and RailTel), joins each one against a daily baseline of who normally originates that space, and grades any mismatch with RPKI: authorized by a ROA, unverifiable, or actively rejected. Alongside the live check it tracks how each network's announced space drifts from day to day (122 daily snapshots since July 2026) and how much of it is covered by RPKI at all.
 
-Built with FastAPI, SQLite and a single-file vanilla JS dashboard on keyless public data (RIPE RIS Live and RIPEstat), hosted on Render and GitHub Pages.
+Built with Python (FastAPI, SQLite) and a single-file vanilla JS dashboard on keyless public data (RIPE RIS Live and RIPEstat).
 
-> **What it's for:** leave it open and watch real route updates for Indian address space stream past, hop by hop, with every one checked against who should be announcing it. Or type in any prefix and AS number and see exactly what the detector would decide, and why.
+> **What it's for:** watching real route updates for Indian address space stream past, hop by hop, with every one checked against who should be announcing it, and testing any prefix and AS number against the same detector to see exactly what it would decide and why.
 
-**Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) (the backend on Render sleeps when idle, so the first load can take ~30s)
+**Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) (the page shows the most recent saved data at once, then switches to live data when the backend wakes, which can take up to a minute)
 
-![Dashboard: heading card and overview](docs/screenshots/dashboard.png)
+![Dashboard heading, overview tiles and the live BGP feed with each AS path drawn hop by hop](docs/screenshots/dashboard.png)
+
+![Try the Detector: an exact-prefix hijack of Airtel's block by AS17557, graded critical because Airtel's ROA rejects that origin](docs/screenshots/detector.png)
 
 ---
 
@@ -25,8 +27,9 @@ Real results from running this, not projections:
 - **The first version never checked a single prefix.** The monitor read `announcement["prefix"]`, but RIS Live sends `announcement["prefixes"]` (a list). Every message raised a `KeyError` that websocket-client silently swallowed, so the early "zero false positives" result really meant zero checks. Fixed, and handler errors are now logged loudly.
 - **Once it actually ran, a "wrong" origin was usually fine.** In a ~15-minute live run (~48,000 prefix updates), most mismatched origins were Indian businesses (Canara Bank, Powergrid, Wipro, Morgan Stanley's India arm) announcing sub-blocks of their ISP's space, each **explicitly authorized by an RPKI ROA**. These are graded `info`. What's left as `warning` is the genuinely unverifiable case, such as AS135709 (Lightstorm) originating a /24 inside Sify's space with no ROA either way.
 - **"Critical" could never fire.** RIPEstat reports `invalid_asn` / `invalid_length`, never a bare `invalid`, so the original `== "invalid"` check never matched. A Pakistan Telecom (AS17557) announcement of Airtel's block now correctly comes out **critical**.
-- **Airtel announces its own space from three ASNs.** AS24560, AS9498 and AS45609 (its mobile network) are all Bharti Airtel, and runs flagged them as hijacking each other. They're now treated as siblings. Over 109 daily snapshots (July to October 2026), AS24560's announced prefix count fell by 270 while AS9498's rose by 130.
-- **RPKI adoption is uneven.** In the latest 30-prefix-per-network sample, Airtel's AS24560 has ROAs for **63%** of its prefixes, while Jio, BSNL and Vodafone Idea are at **100%** and everyone else is between 87% and 97%. RPKI can strongly back up a flag for some networks and barely help for others.
+- **Airtel announces its own space from three ASNs.** AS24560, AS9498 and AS45609 (its mobile network) are all Bharti Airtel, and runs flagged them as hijacking each other. They're now treated as siblings. Over 122 daily snapshots (11 July to 14 November 2026), AS24560's announced prefix count fell by 266 while AS9498's rose by 147, so space is moving between Airtel's own ASNs rather than disappearing.
+- **RPKI adoption is uneven.** In the latest 30-prefix-per-network sample (9 November 2026), Airtel's AS24560 has ROAs for only **50%** of its prefixes, while BSNL, ACT Fibernet, Vodafone Idea and RailTel are at **100%** and the rest are between 87% and 97%. RPKI can strongly back up a flag for some networks and barely help for others.
+- **The tracked space is stable overall but not static.** Across the same 122 snapshots the total baseline grew from 20,737 to 20,895 prefixes (+158), with BSNL adding 131 and Sify unchanged at 2,225.
 
 ---
 
@@ -49,16 +52,13 @@ Real results from running this, not projections:
 - **Who Carries India's Routes:** an interactive graph of the upstream networks (Arelion, Cogent, GTT, Tata and others) observed handing each ISP's routes to the rest of the internet. Hover a network to isolate its links.
 - **Per-ISP cards** with a 60-minute activity sparkline, top upstream and RPKI coverage.
 
-![Live BGP traffic: feed and activity chart](docs/screenshots/live-traffic.png)
 
-![Who Carries India's Routes: upstream graph](docs/screenshots/upstreams.png)
 
 ### Try the Detector
 
 - Type any prefix and origin ASN, or pick a preset (Jio announcing its own block, a Pakistan Telecom-style hijack of Airtel, a China Telecom-style more-specific inside Jio, a replay of the latest real event, or Google DNS as out-of-scope space).
 - Steps through exactly what the live monitor would decide, using the same code path, including a live RPKI lookup. Nothing is logged.
 
-![Try the Detector: a critical verdict](docs/screenshots/detector.png)
 
 ### Baseline Drift & RPKI Coverage
 
@@ -69,15 +69,15 @@ Real results from running this, not projections:
 
 - Every flag with its severity, type (exact or more-specific), expected vs. observed origin, RPKI status and a short "why" tag (full explanation on hover). Filterable by severity; the first 12 rows show, with the rest one click away.
 
-![Recent events table](docs/screenshots/events.png)
 
 ### UI/UX: "Quiet Control Room"
 
-A dark, matte dashboard with one accent colour. Everything is blue or a shade of white, and amber and red appear only when something is actually wrong, so a warning is never lost among decorative colour. The heading card, stat tiles and panels share one surface style: mostly opaque, softly lit from behind, with a faint grain instead of glossy glass. Type is Inter, with monospace for prefixes, AS numbers and paths.
+A dark, matte, mostly neutral dashboard. Data is drawn in light grey, blue is kept for what is live or clickable (the live badge, the origin AS in each path, the Run detector button), and amber and red appear only when something is actually wrong, so a warning is never lost among decorative colour. Type is Inter, with monospace for prefixes, AS numbers and paths.
 
 ### Resilience & Accessibility
 
-- Auto-refreshes every 15s. A failed poll keeps the last good data on screen, and a banner appears only after repeated failures.
+- Shows saved data on first paint (the visitor's last session, or a daily snapshot of the API), labelled with its age, while the backend wakes; live data replaces it automatically.
+- Auto-refreshes every 15s without stacking requests. A failed poll keeps the last good data on screen, and a banner appears only after repeated failures.
 - Sections re-render only when their data actually changes, and auto-updating regions are `aria-live` so screen readers announce real updates.
 - Respects `prefers-reduced-motion`. Every value from the API is HTML-escaped before rendering.
 - Works down to phone width with no horizontal scrolling; the wide events table scrolls inside its own card.
@@ -92,6 +92,14 @@ A dark, matte dashboard with one accent colour. Everything is blue or a shade of
 | [RIPEstat](https://stat.ripe.net/docs/data_api) announced-prefixes | REST | No | Each network's currently-announced prefixes (the baseline) |
 | RIPEstat rpki-validation | REST | No | ROA status: `valid`, `invalid_asn`, `invalid_length` or `unknown` |
 | RIPEstat as-overview | REST | No | Holder organisation for an AS number |
+
+**How the data is cleaned and joined:**
+
+1. **Baseline:** RIPEstat's announced prefixes for each tracked ASN are stored as (prefix, owner ASN) and rebuilt daily. Airtel's three ASNs form one sibling group so they never flag each other.
+2. **Stream:** each RIS Live message is split into one row per prefix (a message carries a list), the origin is the last AS in the path with prepending collapsed, and AS sets are skipped.
+3. **Join:** each announced prefix is matched to its covering baseline prefix by walking up its supernets (at most 32 lookups for IPv4). No covering prefix means untracked space, which is ignored.
+4. **Grade:** a mismatched origin is checked with RIPEstat's RPKI validator and graded `info`, `warning` or `critical`; the same (prefix, origin) is recorded once per 6 hours.
+5. **Aggregate:** every tracked update also feeds per-minute counts, a rolling feed and the upstream (second-to-last hop) edges behind the live panels.
 
 ---
 
@@ -138,7 +146,7 @@ Open `http://localhost:8090`. API docs are at `http://localhost:8000/docs`.
 
 ### Production
 
-Render runs the API and the monitor in one free web service (`render.yaml`), and GitHub Pages serves the dashboard. Step-by-step guide, free-tier trade-offs and the sleep workaround are in [docs/deployment.md](docs/deployment.md). To keep the monitor running on your own Windows machine instead, see [docs/scheduling.md](docs/scheduling.md).
+To deploy your own copy (Render for the API, GitHub Pages for the dashboard), follow [docs/deployment.md](docs/deployment.md). To keep the monitor running on your own Windows machine instead, see [docs/scheduling.md](docs/scheduling.md).
 
 ### Tests
 
@@ -160,7 +168,7 @@ India-BGP-Hijack-Monitor/
 ├── run_monitor.bat                     # Restart-on-crash wrapper for a persistent local monitor
 ├── .github/workflows/
 │   ├── test.yml                        # Both test suites on every push
-│   ├── refresh-baseline.yml            # Daily: rebuild baseline, append to history, commit
+│   ├── refresh-baseline.yml            # Daily: baseline, history, API snapshot, commit
 │   └── refresh-rpki-coverage.yml       # Weekly: resample RPKI coverage, commit
 │
 ├── backend/
@@ -182,6 +190,7 @@ India-BGP-Hijack-Monitor/
 │   └── index.html                      # The whole dashboard (deploy-aware API URL)
 │
 ├── scripts/
+│   ├── snapshot_api.py                 # Daily: save the deployed API's responses for first paint
 │   └── seed_baseline_history.py        # One-off: rebuilt the drift history from git
 │
 └── docs/
@@ -191,32 +200,9 @@ India-BGP-Hijack-Monitor/
     ├── baseline-summary.json           # Latest baseline counts (committed daily)
     ├── baseline-history.json           # Every daily snapshot (read by /api/baseline-drift)
     ├── rpki-coverage-summary.json      # Latest RPKI sample (committed weekly)
+    ├── dashboard-snapshot.json         # Daily API snapshot shown while Render wakes
     └── screenshots/                    # README images
 ```
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/status` | Messages processed, event counts by severity, baseline size, last message time |
-| GET | `/api/asns` | Tracked networks with baseline prefix counts, RPKI coverage and a sample prefix |
-| GET | `/api/events` | Recent events. Optional `severity` and `limit` (default 50, max 500) |
-| GET | `/api/live` | Rolling feed of real updates, per-network per-minute activity (last 60 min) and observed upstreams |
-| GET | `/api/check?prefix=&origin=` | Runs the detection logic on a hypothetical announcement. Read-only; nothing is logged |
-| GET | `/api/baseline-drift` | Per-network prefix count drift across the committed daily snapshots |
-
----
-
-## Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RUN_MONITOR_INLINE` | unset | `1` starts the live monitor as a background thread inside the API process (used on Render) |
-| `RUN_RPKI_REFRESH_INLINE` | unset | `1` re-samples RPKI coverage in the background on boot (~5 min) |
-
-The tracked networks live in `backend/detector/targets.py` as a plain dict. The dashboard picks its API URL automatically (localhost vs. Render).
 
 ---
 
@@ -258,6 +244,31 @@ How a single announcement is handled:
 2. **Subscribe:** RIS Live is filtered to the ~8 largest blocks per network, with `moreSpecific: true`.
 3. **Classify:** find the covering baseline prefix and its owner. A different origin (that isn't a sibling) becomes an event, graded by RPKI.
 4. **Record:** every update for tracked space also feeds the bounded activity, feed and upstream tables that drive the live panels.
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/status` | Messages processed, event counts by severity, baseline size, last message time |
+| GET | `/api/asns` | Tracked networks with baseline prefix counts, RPKI coverage and a sample prefix |
+| GET | `/api/events` | Recent events. Optional `severity` and `limit` (default 50, max 500) |
+| GET | `/api/live` | Rolling feed of real updates, per-network per-minute activity (last 60 min) and observed upstreams |
+| GET | `/api/check?prefix=&origin=` | Runs the detection logic on a hypothetical announcement. Read-only; nothing is logged |
+| GET | `/api/baseline-drift` | Per-network prefix count drift across the committed daily snapshots |
+
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RUN_MONITOR_INLINE` | unset | `1` starts the live monitor as a background thread inside the API process (used on Render) |
+| `RUN_RPKI_REFRESH_INLINE` | unset | `1` re-samples RPKI coverage in the background on boot (~5 min) |
+
+The tracked networks live in `backend/detector/targets.py` as a plain dict. The dashboard picks its API URL automatically (localhost vs. Render).
+
+### Hosting
+
+The API and the live monitor run as one free Render web service (`render.yaml`), and GitHub Pages serves the dashboard and the committed `docs/*.json` files. Render's free instance sleeps after 15 idle minutes and takes about 50s to wake, so the dashboard first paints from the browser's cached responses or from `docs/dashboard-snapshot.json`, which the daily workflow saves from the deployed API. GitHub Actions also rebuilds the baseline daily and the RPKI sample weekly and commits the results.
 
 ---
 

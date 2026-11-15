@@ -31,6 +31,9 @@ from db import store
 # Real paths re-announce the same route constantly; one event per
 # (prefix, origin) per window is the signal, the rest is noise.
 EVENT_DEDUPE_SECONDS = 6 * 3600
+# Reconnect if RIS Live sends nothing for this long. Tracked space normally
+# sees hundreds of updates a minute, so 5 quiet minutes means a dead feed.
+STALL_SECONDS = 300
 
 RIS_WS_URL = "wss://ris-live.ripe.net/v1/ws/?client=cce-bgp-hijack-monitor"
 RPKI_URL = "https://stat.ripe.net/data/rpki-validation/data.json"
@@ -303,12 +306,52 @@ def run_monitor(max_messages=None, max_seconds=None):
         # on_message -- which once hid a KeyError that silently skipped
         # every announcement. Make any such failure loud.
         print(f"  [MONITOR ERROR] {type(error).__name__}: {error}")
+        try:
+            conn.rollback()  # don't leave a half-written message open
+        except Exception:
+            pass
 
-    ws = websocket.WebSocketApp(RIS_WS_URL, on_open=on_open, on_message=on_message,
-                                on_error=on_error)
+    def handle(ws, message):
+        state["last_msg"] = time.monotonic()
+        on_message(ws, message)
+
+    def timed_out():
+        return bool(max_seconds) and (time.monotonic() - state["start"]) >= max_seconds
+
+    # RIS Live sometimes closes the socket, and sometimes just goes quiet
+    # with the TCP connection still open. Either used to end live
+    # monitoring for good while the API kept serving (the dashboard showed
+    # "last BGP update 18m ago" indefinitely). So: reconnect in a loop,
+    # time out pings, and drop a connection that has been silent too long.
+    def watchdog():
+        while not state["stopped"]:
+            time.sleep(15)
+            ws = state.get("ws")
+            if ws and time.monotonic() - state["last_msg"] > STALL_SECONDS:
+                print(f"  [MONITOR] no messages for {STALL_SECONDS}s, reconnecting")
+                state["last_msg"] = time.monotonic()
+                ws.close()
+
+    state.update(stopped=False, last_msg=time.monotonic())
+    threading.Thread(target=watchdog, daemon=True).start()
+    backoff = 5
     try:
-        ws.run_forever(ping_interval=20)
+        while True:
+            connected_at = time.monotonic()
+            state["ws"] = websocket.WebSocketApp(RIS_WS_URL, on_open=on_open, on_message=handle,
+                                                 on_error=on_error)
+            state["ws"].run_forever(ping_interval=30, ping_timeout=10)
+            state["ws"] = None  # nothing for the watchdog to close while we wait
+            done = (max_messages and state["count"] >= max_messages) or timed_out()
+            if done or max_messages or max_seconds:
+                break  # bounded test runs don't reconnect
+            # Reset the backoff after a connection that worked for a while.
+            backoff = 5 if time.monotonic() - connected_at > 120 else min(backoff * 2, 300)
+            print(f"  [MONITOR] connection closed, reconnecting in {backoff}s")
+            time.sleep(backoff)
+            state["last_msg"] = time.monotonic()
     finally:
+        state["stopped"] = True
         conn.close()
     print(f"Processed {state['count']} messages, flagged {state['events']} events.")
     return state

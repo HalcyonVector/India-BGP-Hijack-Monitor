@@ -533,6 +533,27 @@
     font-size: 12px;
     color: var(--ink-2);
   }
+  /* Footer: about, data sources, references, author and repo links */
+  .site-footer {
+    margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .foot-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 32px; }
+  .site-footer h3 {
+    margin: 0 0 10px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .site-footer p { margin: 0 0 10px; line-height: 1.55; }
+  .site-footer ul { margin: 0; padding: 0; list-style: none; }
+  .site-footer li { margin-bottom: 7px; line-height: 1.45; }
+  .site-footer a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+  .site-footer a:hover, .site-footer a:focus-visible { color: var(--ink); border-bottom-color: var(--ink-2); }
+  .foot-bar {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px;
+    margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .foot-bar b { color: var(--ink-2); font-weight: 600; }
+  @media (max-width: 760px) { .foot-grid { grid-template-columns: 1fr; gap: 22px; } }
 </style>
 </head>
 <body>
@@ -651,6 +672,37 @@
     <button id="eventsToggle" style="display:none;" onclick="_showAllEvents = !_showAllEvents; loadEvents();"></button>
   </div>
 </section>
+
+<footer class="site-footer">
+  <div class="foot-grid">
+    <div>
+      <h3>About</h3>
+      <p>Checks live BGP announcements for India's largest ISPs against a daily baseline and RPKI. For personal and educational use, not an authoritative source on Indian routing.</p>
+      <p><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor" target="_blank" rel="noopener">Source code and method on GitHub</a></p>
+    </div>
+    <div>
+      <h3>Data</h3>
+      <ul>
+        <li><a href="https://ris-live.ripe.net/" target="_blank" rel="noopener">RIPE RIS Live</a>: real-time BGP updates</li>
+        <li><a href="https://stat.ripe.net/docs/data_api" target="_blank" rel="noopener">RIPEstat Data API</a>: announced prefixes, RPKI validation, AS holders</li>
+        <li><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/blob/main/docs/baseline-history.json" target="_blank" rel="noopener">Daily baseline history</a> (committed by CI)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>References</h3>
+      <ul>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc4271" target="_blank" rel="noopener">RFC 4271</a>: BGP-4</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc6480" target="_blank" rel="noopener">RFC 6480</a>: RPKI infrastructure</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc6811" target="_blank" rel="noopener">RFC 6811</a>: BGP prefix origin validation</li>
+        <li><a href="https://www.ripe.net/publications/news/industry-developments/youtube-hijacking-a-ripe-ncc-ris-case-study" target="_blank" rel="noopener">YouTube hijacking: a RIPE NCC RIS case study</a> (2008)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bar">
+    <span>Built by <b>Sagnik</b> · <a href="https://github.com/HalcyonVector" target="_blank" rel="noopener">GitHub @HalcyonVector</a></span>
+    <span><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor" target="_blank" rel="noopener">Repository</a> · <a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></span>
+  </div>
+</footer>
 
 <script>
 // Local dev (localhost/127.0.0.1) talks to the local API. Anywhere else

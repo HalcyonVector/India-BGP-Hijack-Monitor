@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior:smooth">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,11 +25,12 @@
     --good:        #2ecc71;
     --warning:     #fab219;
     --critical:    #d03b3b;
-    /* Mostly neutral. Data is drawn in light grey; the blue accent is kept
-       for what is live or clickable; amber and red only for problems.
-       amber and red appear only when something is actually wrong. */
-    --accent:      #6aa8ff;
-    --accent-rgb:  106,168,255;
+    /* Mostly neutral. Data is drawn in light grey. One warm saffron accent
+       marks what is live, clickable or a headline finding; it is never used
+       on a data mark, so it can't be mistaken for amber (warning) or red
+       (critical), which appear only when something is actually wrong. */
+    --accent:      #f2994a;
+    --accent-rgb:  242,153,74;
     --announce:    #c4c6cb;
     --withdraw:    rgba(255,255,255,0.32);
     --radius:      10px;
@@ -471,7 +472,7 @@
   }
   .sim-form input.asn-input { width: 110px; }
   .sim-form button.run {
-    background: var(--accent); color: #06101f; border-color: transparent; font-weight: 700;
+    background: var(--accent); color: #1c1006; border-color: transparent; font-weight: 700;
     box-shadow: 0 6px 20px -8px rgba(var(--accent-rgb),0.9);
   }
   .sim-form button.run:hover { filter: brightness(1.12); }
@@ -579,6 +580,59 @@
     .rpki-axis { grid-template-columns: 0 minmax(0, 1fr) 0; gap: 0; }
   }
 
+  /* ---- Analyst-report layout: nav, findings band, numbered groups ---- */
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }
+  h1 { font-size: clamp(30px, 4.2vw, 46px) !important; letter-spacing: -0.03em; }
+  .hero-kicker { color: var(--accent) !important; }
+  .section-nav {
+    position: sticky; top: 0; z-index: 20; display: flex; gap: 4px; flex-wrap: wrap;
+    margin: 18px -8px 0; padding: 10px 8px; background: rgba(12,13,15,0.94);
+    border-bottom: 1px solid var(--border);
+  }
+  .section-nav a {
+    color: var(--ink-muted); text-decoration: none; font-size: 13px; font-weight: 600;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .section-nav a span { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 6px; font-size: 11.5px; }
+  .section-nav a:hover { color: var(--ink); }
+  .section-nav a.on { color: var(--ink); border-color: var(--border-hi); background: rgba(255,255,255,0.04); }
+  .findings {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 26px 0 56px;
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden;
+    scroll-margin-top: 70px;
+  }
+  .finding { padding: 22px 22px 20px; border-left: 1px solid var(--border); min-width: 0; }
+  .finding:first-child { border-left: 0; }
+  .finding .f-num { font-size: clamp(30px, 3.4vw, 42px); font-weight: 800; letter-spacing: -0.03em; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+  .finding .f-num small { font-size: 0.45em; font-weight: 700; color: var(--ink-muted); letter-spacing: 0; margin-left: 4px; }
+  .finding .f-lbl { margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); line-height: 1.35; }
+  .finding .f-note { margin-top: 8px; font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+  .finding .f-rule { width: 28px; height: 3px; border-radius: 2px; background: var(--accent); margin-bottom: 16px; }
+  .finding.low .f-num { color: var(--accent); }
+  .group { margin-bottom: 64px; scroll-margin-top: 64px; }
+  .group-head { display: flex; gap: 18px; align-items: baseline; margin-bottom: 26px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .group-num { font-size: 40px; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .group-title { font-size: 26px; font-weight: 750; color: var(--ink); letter-spacing: -0.02em; }
+  .group-lede { margin: 6px 0 0; font-size: 14px; color: var(--ink-muted); max-width: 78ch; line-height: 1.5; }
+  .group section:last-child { margin-bottom: 0; }
+  h2::before { background: var(--accent) !important; opacity: 0.85; }
+  .asn-card:hover, .stat-tile:hover, .incident:hover { border-color: rgba(var(--accent-rgb),0.35); }
+  .site-footer a:hover { border-bottom-color: var(--accent); }
+  @media (max-width: 900px) {
+    .findings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .finding:nth-child(3) { border-left: 0; }
+    .finding:nth-child(n+3) { border-top: 1px solid var(--border); }
+  }
+  @media (max-width: 640px) {
+    .findings { grid-template-columns: 1fr; }
+    .finding { border-left: 0; border-top: 1px solid var(--border); }
+    .finding:first-child { border-top: 0; }
+    .group-num { font-size: 30px; }
+    .group-title { font-size: 21px; }
+    .section-nav { overflow-x: auto; flex-wrap: nowrap; }
+    .section-nav a { white-space: nowrap; padding: 6px 10px; }
+  }
+
   /* Footer: about, data sources, references, author and repo links */
   .site-footer {
     margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border);
@@ -636,6 +690,30 @@
   </div>
 </header>
 
+<nav class="section-nav" id="sectionNav" aria-label="Sections">
+  <a href="#findings">Findings</a>
+  <a href="#g-live"><span>01</span>Live</a>
+  <a href="#g-network"><span>02</span>Network</a>
+  <a href="#g-analysis"><span>03</span>Analysis</a>
+  <a href="#g-validation"><span>04</span>Validation</a>
+</nav>
+
+<section class="findings" id="findings" aria-label="Key findings">
+  <div class="finding" id="fRpki"></div>
+  <div class="finding" id="fReplay"></div>
+  <div class="finding" id="fBaseline"></div>
+  <div class="finding" id="fCaptured"></div>
+</section>
+
+<div class="group" id="g-live">
+  <div class="group-head">
+    <span class="group-num" aria-hidden="true">01</span>
+    <div>
+      <div class="group-title" role="heading" aria-level="2">Live</div>
+      <p class="group-lede">What RIPE's route collectors are hearing for Indian address space right now, and what the server has flagged since it last woke.</p>
+    </div>
+  </div>
+
 <section>
   <h2>Overview<span class="rule"></span></h2>
   <div class="stat-grid" id="statGrid" aria-live="polite" aria-atomic="false"></div>
@@ -659,6 +737,42 @@
 </section>
 
 <section>
+  <h2>Recent Events<span class="rule"></span></h2>
+  <div class="events-toolbar">
+    <select id="sevFilter">
+      <option value="">All severities</option>
+      <option value="critical">Critical</option>
+      <option value="warning">Warning</option>
+      <option value="info">Info</option>
+    </select>
+    <button onclick="loadEvents()">Refresh</button>
+  </div>
+  <p class="events-note" id="eventsNote"></p>
+  <div class="table-wrap">
+    <table id="eventsTable">
+      <thead>
+        <tr><th>Time</th><th>Severity</th><th>Type</th><th>Prefix</th><th>Expected ASN</th><th>Observed ASN</th><th>RPKI</th><th>Why</th></tr>
+      </thead>
+      <tbody id="eventsBody" aria-live="polite" aria-atomic="false"></tbody>
+    </table>
+    <div id="emptyMsg" class="empty" style="display:none;"></div>
+  </div>
+  <div style="text-align:center; margin-top:12px;">
+    <button id="eventsToggle" style="display:none;" onclick="_showAllEvents = !_showAllEvents; loadEvents();"></button>
+  </div>
+</section>
+</div>
+
+<div class="group" id="g-network">
+  <div class="group-head">
+    <span class="group-num" aria-hidden="true">02</span>
+    <div>
+      <div class="group-title" role="heading" aria-level="2">Network</div>
+      <p class="group-lede">The tracked ISPs, and the upstream networks that carry their routes to the rest of the internet.</p>
+    </div>
+  </div>
+
+<section>
   <h2>Tracked ASNs<span class="rule"></span></h2>
   <div class="asn-grid" id="asnGrid" aria-live="polite" aria-atomic="false"></div>
 </section>
@@ -670,6 +784,16 @@
     <div class="graph-wrap" id="graphWrap"></div>
   </div>
 </section>
+</div>
+
+<div class="group" id="g-analysis">
+  <div class="group-head">
+    <span class="group-num" aria-hidden="true">03</span>
+    <div>
+      <div class="group-title" role="heading" aria-level="2">Analysis</div>
+      <p class="group-lede">What the committed data shows: the 20-minute captures run four times a day, the weekly RPKI samples and the daily baselines.</p>
+    </div>
+  </div>
 
 <section>
   <h2>Captured History<span class="rule"></span></h2>
@@ -717,6 +841,29 @@
 </section>
 
 <section>
+  <h2>Baseline Drift<span class="rule"></span></h2>
+  <div class="table-wrap" id="driftWrap" aria-live="polite" aria-atomic="false">
+    <div class="empty" id="driftMsg">Loading…</div>
+  </div>
+</section>
+</div>
+
+<div class="group" id="g-validation">
+  <div class="group-head">
+    <span class="group-num" aria-hidden="true">04</span>
+    <div>
+      <div class="group-title" role="heading" aria-level="2">Validation</div>
+      <p class="group-lede">Does the detector catch real incidents? Replayed over archived data, then open to any prefix you want to try.</p>
+    </div>
+  </div>
+
+<section>
+  <h2>Tested Against Real Incidents<span class="rule"></span></h2>
+  <p class="section-lede">The same detection code, run over what RIPE's route collectors actually recorded during four documented incidents (raw RIS archives). A miss is shown as a miss.</p>
+  <div class="incident-grid" id="incidentGrid"><div class="empty">Loading…</div></div>
+</section>
+
+<section>
   <h2>Try the Detector<span class="rule"></span></h2>
   <div class="panel">
     <div class="panel-title">What would the monitor do if this announcement showed up? <span class="hint">Same code path as the live monitor · nothing is logged</span></div>
@@ -731,45 +878,7 @@
     <div class="sim-steps" id="simSteps" aria-live="polite"></div>
   </div>
 </section>
-
-<section>
-  <h2>Tested Against Real Incidents<span class="rule"></span></h2>
-  <p class="section-lede">The same detection code, run over what RIPE's route collectors actually recorded during four documented incidents (raw RIS archives). A miss is shown as a miss.</p>
-  <div class="incident-grid" id="incidentGrid"><div class="empty">Loading…</div></div>
-</section>
-
-<section>
-  <h2>Baseline Drift<span class="rule"></span></h2>
-  <div class="table-wrap" id="driftWrap" aria-live="polite" aria-atomic="false">
-    <div class="empty" id="driftMsg">Loading…</div>
-  </div>
-</section>
-
-<section>
-  <h2>Recent Events<span class="rule"></span></h2>
-  <div class="events-toolbar">
-    <select id="sevFilter">
-      <option value="">All severities</option>
-      <option value="critical">Critical</option>
-      <option value="warning">Warning</option>
-      <option value="info">Info</option>
-    </select>
-    <button onclick="loadEvents()">Refresh</button>
-  </div>
-  <p class="events-note" id="eventsNote"></p>
-  <div class="table-wrap">
-    <table id="eventsTable">
-      <thead>
-        <tr><th>Time</th><th>Severity</th><th>Type</th><th>Prefix</th><th>Expected ASN</th><th>Observed ASN</th><th>RPKI</th><th>Why</th></tr>
-      </thead>
-      <tbody id="eventsBody" aria-live="polite" aria-atomic="false"></tbody>
-    </table>
-    <div id="emptyMsg" class="empty" style="display:none;"></div>
-  </div>
-  <div style="text-align:center; margin-top:12px;">
-    <button id="eventsToggle" style="display:none;" onclick="_showAllEvents = !_showAllEvents; loadEvents();"></button>
-  </div>
-</section>
+</div>
 
 <footer class="site-footer">
   <div class="foot-grid">
@@ -1509,12 +1618,72 @@ function renderIncidents(rep) {
   }).join('');
 }
 
+// ---- Key findings band: four headline numbers from the committed data -----
+
+function finding(id, num, label, note, low) {
+  const el = document.getElementById(id);
+  el.className = 'finding' + (low ? ' low' : '');
+  el.innerHTML = `<div class="f-rule"></div><div class="f-num">${num}</div><div class="f-lbl">${label}</div><div class="f-note">${note}</div>`;
+}
+
+function renderFindings(days, flags, rpki, replay) {
+  if (rpki?.length) {
+    const per = {};
+    for (const wk of rpki) for (const [asn, [n, k]] of Object.entries(wk.sampled)) {
+      (per[asn] ??= { n: 0, k: 0 }); per[asn].n += n; per[asn].k += k;
+    }
+    const rows = Object.entries(per).map(([asn, r]) => ({ asn: +asn, p: r.k / r.n, n: r.n, ci: wilson(r.k, r.n) })).sort((a, b) => a.p - b.p);
+    const [low, ...rest] = rows;
+    const pct = v => (v * 100).toFixed(1);
+    finding('fRpki', `${pct(low.p)}<small>%</small>`, `of ${esc(SHORT_NAMES[low.asn] || `AS${low.asn}`)} AS${low.asn}'s prefixes have a ROA`,
+      `Every other network: ${pct(rest[0].p)} to ${pct(rest[rest.length - 1].p)}%. Pooled over ${rpki.length} weeks, 95% CI ${(low.ci[0] * 100).toFixed(0)} to ${(low.ci[1] * 100).toFixed(0)}%.`, true);
+  }
+  if (replay?.incidents?.length) {
+    const inc = replay.incidents, caught = inc.filter(i => i.caught);
+    const missed = inc.filter(i => !i.caught).map(i => `${i.date.slice(0, 4)} ${i.name.split(',')[0].replace(/^\S+ (hijacks|leaks) /, '')}`);
+    finding('fReplay', `${caught.length}<small>of ${inc.length}</small>`, 'documented incidents caught when replayed from RIS archives',
+      missed.length ? `Missed: ${esc(missed.join(', '))}. Shown with the reason under Validation.` : 'Every replayed incident was flagged.');
+  }
+  if (_baselineHistory?.length > 1) {
+    const a = _baselineHistory[0], b = _baselineHistory[_baselineHistory.length - 1];
+    const d = b.total_prefixes - a.total_prefixes;
+    const air = (b.per_asn['24560'] ?? 0) - (a.per_asn['24560'] ?? 0);
+    finding('fBaseline', compactNumber(b.total_prefixes), `prefixes announced by the ${Object.keys(b.per_asn).length} tracked networks`,
+      `${d >= 0 ? '+' : ''}${d} since ${dateShort(a.generated_at_utc)} over ${_baselineHistory.length} daily snapshots; Airtel's main ASN ${air >= 0 ? '+' : ''}${air} as space moves between its own ASNs.`);
+  }
+  const entries = (flags?.entries || []).filter(e => e.type !== 'possible_route_leak');
+  if (days?.length && entries.length) {
+    const origins = new Set(entries.map(e => e.observed_asn)).size;
+    const valid = Math.round(entries.filter(e => e.rpki_status === 'valid').length / entries.length * 100);
+    const crit = entries.filter(e => e.severity === 'critical').length;
+    const hours = days.reduce((s, d) => s + d.minutes, 0) / 60;
+    finding('fCaptured', origins, `networks seen announcing inside tracked ISPs' space`,
+      `${valid}% of their prefixes are ROA-authorised, ${crit} critical, over ${hours.toFixed(1)} hours of captured traffic.`, crit > 0);
+  } else {
+    finding('fCaptured', '<small style="margin:0">pending</small>', 'networks seen announcing inside tracked ISPs\' space',
+      'The capture job runs four times a day; this fills in from its first run.');
+  }
+}
+
+// Sticky nav: highlight the group currently on screen.
+(() => {
+  const links = [...document.querySelectorAll('#sectionNav a')];
+  const targets = links.map(a => document.querySelector(a.getAttribute('href')));
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) {
+      links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === `#${e.target.id}`));
+    }
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  targets.forEach(t => t && io.observe(t));
+})();
+
 async function loadAnalysis() {
   await loadDrift();  // also loads the baseline history the churn panel needs
   const [days, flags, rpki, replay] = await Promise.all([
     fetchDoc('history/monitor-daily.json'), fetchDoc('history/flags.json'),
     fetchDoc('history/rpki-coverage.json'), fetchDoc('validation/replay.json'),
   ]);
+  renderFindings(days, flags, rpki, replay);
   renderHistory(days, flags);
   renderDelegations(flags, days);
   renderRpkiHistory(rpki);

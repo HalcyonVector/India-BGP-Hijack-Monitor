@@ -1505,6 +1505,7 @@ function renderDelegations(flags, days) {
     const shown = _showAllDeleg ? rows : rows.slice(0, DELEG_COLLAPSED);
     const validPct = Math.round(origin.filter(e => e.rpki_status === 'valid').length / origin.length * 100);
     const owners = new Set(rows.map(r => r.owner)).size;
+    const nets = new Set(rows.map(r => r.asn)).size;  // one network can announce inside several ISPs
     wrap.innerHTML = `
       <table>
         <thead><tr><th>Space owned by</th><th>Announced by</th><th>Prefixes</th><th>RPKI</th><th>Captures seen in</th><th>Last seen</th></tr></thead>
@@ -1519,7 +1520,7 @@ function renderDelegations(flags, days) {
           </tr>`).join('')}
         </tbody>
       </table>
-      <div class="table-caption"><b>${rows.length}</b> ${plural(rows.length, 'network')} announced <b>${origin.length}</b> ${plural(origin.length, 'prefix', 'prefixes')} inside the space of <b>${owners}</b> tracked ${plural(owners, 'ISP')}. <b>${validPct}%</b> of those prefixes are authorised by the ISP's own ROA: mostly business customers announcing a block their ISP assigned to them, which is normal. "No ROA" rows can't be confirmed either way; "invalid" rows are the ones to look at.</div>`;
+      <div class="table-caption"><b>${nets}</b> ${plural(nets, 'network')} announced <b>${origin.length}</b> ${plural(origin.length, 'prefix', 'prefixes')} inside the space of <b>${owners}</b> tracked ${plural(owners, 'ISP')}. <b>${validPct}%</b> of those prefixes are authorised by the ISP's own ROA: mostly business customers announcing a block their ISP assigned to them, which is normal. "No ROA" rows can't be confirmed either way; "invalid" rows are the ones to look at.</div>`;
     const toggle = document.getElementById('delegToggle');
     toggle.style.display = rows.length > DELEG_COLLAPSED ? '' : 'none';
     toggle.textContent = _showAllDeleg ? 'Show fewer' : `Show all ${rows.length}`;

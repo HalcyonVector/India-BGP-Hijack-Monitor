@@ -8,9 +8,9 @@ Built with Python (FastAPI, SQLite) and a single-file vanilla JS dashboard on ke
 
 **Live demo:** [halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend](https://halcyonvector.github.io/India-BGP-Hijack-Monitor/frontend/) (the page shows the most recent saved data at once, then switches to live data when the backend wakes, which can take up to a minute)
 
-![Dashboard heading, overview tiles and the live BGP feed with each AS path drawn hop by hop](docs/screenshots/dashboard.png)
+![Dashboard heading, the key findings band (Airtel's 51.3% ROA coverage, 3 of 4 replayed incidents caught, 20,902 tracked prefixes) and the start of the live section](docs/screenshots/dashboard.png)
 
-![Try the Detector: an exact-prefix hijack of Airtel's block by AS17557, graded critical because Airtel's ROA rejects that origin](docs/screenshots/detector.png)
+![Analysis section: captured history of flags per day and route churn per 1,000 prefixes, who announces inside whose space, and RPKI coverage pooled over 20 weekly samples with 95% confidence intervals](docs/screenshots/analysis.png)
 
 ---
 
@@ -29,6 +29,7 @@ Real results from running this, not projections:
 - **"Critical" could never fire.** RIPEstat reports `invalid_asn` / `invalid_length`, never a bare `invalid`, so the original `== "invalid"` check never matched. A Pakistan Telecom (AS17557) announcement of Airtel's block now correctly comes out **critical**.
 - **Airtel announces its own space from three ASNs.** AS24560, AS9498 and AS45609 (its mobile network) are all Bharti Airtel, and runs flagged them as hijacking each other. They're now treated as siblings. Over 122 daily snapshots (11 July to 14 November 2026), AS24560's announced prefix count fell by 266 while AS9498's rose by 147, so space is moving between Airtel's own ASNs rather than disappearing.
 - **RPKI adoption is uneven, and one network stands apart.** Pooling all 20 weekly samples (600 prefixes per network, July to November 2026), Airtel's AS24560 has ROAs for **51.3%** of its prefixes (95% CI 47.3 to 55.3%). Every other network is between **90.5%** (Sify) and **99.5%** (Jio, BSNL). Single weeks put AS24560 anywhere from 37% to 67%; that swing is sampling noise from 30-prefix samples, not real change, which is why the dashboard pools them. RPKI can strongly back up a flag for most networks and only half the time for Airtel's main one.
+- **A "critical" flag can be a paperwork gap, and the path shows it.** The first 20-minute CI capture (19 November 2026, 7,103 messages) found 30 distinct flags from 12 networks: 29 ROA-authorised and one critical. That one is Wockhardt (AS141276) announcing 121.240.38.0/24 inside Tata Communications' space, which Tata's ROA rejects. But the path runs `6453 > 4755 > 141276`: Tata itself is carrying the route, so this reads as a customer missing from Tata's ROA rather than a hijack. RPKI says "invalid"; the AS path adds the context.
 - **The detector catches real incidents in archived data.** Replayed over RIPE RIS's raw update files, it flagged Pakistan Telecom's 2008 YouTube hijack at 18:47:57 UTC (seen by 11 collector peers), all five of eNet's 2018 Route 53 /24s, and the 2019 Verizon leak with **AS396531 named as the leaker** across 62 prefixes and 24 peers. It **missed** the 2024 incident around Cloudflare's 1.1.1.1: the /32 hijack never reached a RIS collector, and the leak that did runs between regional networks with no Tier-1 on both sides, which the leak heuristic can't see.
 - **The tracked space is stable overall but not static.** Across the same 122 snapshots the total baseline grew from 20,737 to 20,895 prefixes (+158), with BSNL adding 131 and Sify unchanged at 2,225.
 
@@ -90,9 +91,9 @@ Real results from running this, not projections:
 - What the live server has flagged since it last woke: severity, type (exact, more-specific or possible leak), expected vs. observed AS, RPKI status and a short "why" tag (full explanation on hover). Filterable by severity; the first 12 rows show, with the rest one click away.
 
 
-### UI/UX: "Quiet Control Room"
+### UI/UX: Analyst Report
 
-A dark, matte, mostly neutral dashboard. Data is drawn in light grey, blue is kept for what is live or clickable (the live badge, the origin AS in each path, the Run detector button), and amber and red appear only when something is actually wrong, so a warning is never lost among decorative colour. Type is Inter, with monospace for prefixes, AS numbers and paths.
+The page reads like a short report: a key findings band of four headline numbers computed from the committed data, then four numbered groups (01 Live, 02 Network, 03 Analysis, 04 Validation) with a sticky section nav. It's dark and matte; data is drawn in light grey, one saffron accent marks section numbers, headline findings and what is live or clickable, and amber and red appear only on warnings and critical flags, so a problem is never lost among decorative colour. Type is Inter, with monospace for prefixes, AS numbers and paths.
 
 ### Resilience & Accessibility
 

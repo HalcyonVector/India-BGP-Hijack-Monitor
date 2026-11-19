@@ -153,5 +153,5 @@
   work on real recorded data; it is not a recall rate for Indian space.
 - **Weekly RPKI samples swing by chance.** Each week draws a fresh random
   30 prefixes per network, so a single week for Airtel's AS24560 has ranged
-  from 37% to 67%. The dashboard pools all weeks (570 prefixes per network
+  from 37% to 67%. The dashboard pools all weeks (600 prefixes per network
   by November 2026) and shows a 95% Wilson interval instead.

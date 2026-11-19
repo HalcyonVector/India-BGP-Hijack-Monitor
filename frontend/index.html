@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>India BGP Hijack/Leak Monitor</title>
+<title>India BGP Hijack Monitor</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0d'/%3E%3Ccircle cx='16' cy='16' r='4.2' fill='white'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-opacity='0.55' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='13.2' fill='none' stroke='white' stroke-opacity='0.25' stroke-width='1.4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -533,6 +533,52 @@
     font-size: 12px;
     color: var(--ink-2);
   }
+  /* Analysis panels: captured history, delegations, pooled RPKI, replayed incidents */
+  .section-lede { margin: -6px 0 14px; color: var(--ink-muted); font-size: 13.5px; max-width: 82ch; line-height: 1.55; }
+  .panel-note { margin: 12px 0 0; font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+  .hist-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; }
+  .mini-stats { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 2px 0 12px; }
+  .mini-stats div { font-size: 11.5px; color: var(--ink-muted); }
+  .mini-stats b { display: block; font-size: 20px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .legend i.tick { width: 2px; height: 11px; border-radius: 0; background: rgba(255,255,255,0.55); }
+  .table-caption { padding: 10px 16px; font-size: 12px; color: var(--ink-muted); border-top: 1px solid var(--border); line-height: 1.5; }
+  .table-caption b { color: var(--ink-2); font-weight: 600; }
+  td .rpki-mix { display: inline-flex; gap: 8px; font-size: 12px; }
+  td .rpki-mix .v { color: var(--ink-2); }
+  td .rpki-mix .u { color: var(--warning); }
+  td .rpki-mix .x { color: var(--critical); font-weight: 650; }
+  td.path { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .rpki-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) 150px; gap: 12px; align-items: center; margin-top: 6px; font-size: 12.5px; }
+  .rpki-row .nm { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rpki-row .est { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .rpki-row .est small { display: block; color: var(--ink-muted); font-size: 11px; }
+  .rpki-row .est.low { color: var(--critical); }
+  .rpki-axis { display: grid; grid-template-columns: 130px minmax(0, 1fr) 150px; gap: 12px; font-size: 10.5px; color: var(--ink-muted); margin-top: 4px; }
+  .rpki-axis div { display: flex; justify-content: space-between; }
+  .incident-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .incident h3 { margin: 0 0 4px; font-size: 15px; color: var(--ink); font-weight: 650; }
+  .incident .meta { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
+  .incident p { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+  .incident .nums { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
+  .incident .nums b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .incident .path { font-family: var(--mono); font-size: 12px; color: var(--ink-2); overflow-x: auto; white-space: nowrap; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; }
+  .incident .note { font-size: 12.5px; color: var(--warning); }
+  .incident a { color: var(--ink-2); font-size: 12px; text-decoration: none; border-bottom: 1px solid var(--border-hi); }
+  .incident a:hover { color: var(--ink); }
+  .verdict-pill { float: right; font-size: 11px; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-hi); color: var(--ink-2); }
+  .verdict-pill.missed { border-color: rgba(250,178,25,0.5); color: var(--warning); }
+  .events-note { font-size: 12.5px; color: var(--ink-muted); margin: -4px 0 10px; }
+  @media (max-width: 900px) {
+    .hist-grid, .incident-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    /* name and estimate on one line, the strip full width underneath */
+    .rpki-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; margin-top: 12px; }
+    .rpki-row svg { grid-column: 1 / -1; grid-row: 2; }
+    .rpki-row .est small { display: inline; margin-left: 6px; }
+    .rpki-axis { grid-template-columns: 0 minmax(0, 1fr) 0; gap: 0; }
+  }
+
   /* Footer: about, data sources, references, author and repo links */
   .site-footer {
     margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border);
@@ -574,8 +620,8 @@
       </div>
       <div>
         <div class="hero-kicker">BGP route integrity · India</div>
-        <h1>India BGP Hijack/Leak Monitor</h1>
-        <p class="hero-lede">Watches route announcements for India's major ISPs in real time and flags any network that claims address space it doesn't own, checked against RPKI.</p>
+        <h1>India BGP Hijack Monitor</h1>
+        <p class="hero-lede">Watches route announcements for India's major ISPs in real time and flags any network that claims address space it doesn't own (checked against RPKI) or passes routes on in a way that looks like a leak.</p>
       </div>
     </div>
     <div class="hero-status">
@@ -626,6 +672,51 @@
 </section>
 
 <section>
+  <h2>Captured History<span class="rule"></span></h2>
+  <div class="hist-grid">
+    <div class="panel">
+      <div class="panel-title">Distinct flags per day, by severity <span class="hint" id="histHint"></span></div>
+      <div id="histStats" class="mini-stats"></div>
+      <div id="histChart"></div>
+      <div class="legend">
+        <span><i style="background:var(--critical)"></i>critical</span>
+        <span><i style="background:var(--warning)"></i>warning</span>
+        <span><i style="background:var(--announce)"></i>info</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Route churn per 1,000 prefixes <span class="hint">updates per hour watched, all captures</span></div>
+      <div id="churnBars"></div>
+      <p class="panel-note">Normalised by each network's size and by time actually watched, so a big ISP doesn't look busy just for being big.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Who Announces Inside Whose Space<span class="rule"></span></h2>
+  <div class="table-wrap" id="delegWrap" aria-live="polite">
+    <div class="empty">Loading…</div>
+  </div>
+  <div style="text-align:center; margin-top:12px;">
+    <button id="delegToggle" style="display:none;"></button>
+  </div>
+  <div class="table-wrap" id="leakWrap" style="margin-top:16px;"></div>
+</section>
+
+<section>
+  <h2>RPKI Coverage, Pooled Over Weeks<span class="rule"></span></h2>
+  <div class="panel">
+    <div class="panel-title">Share of each network's prefixes with a ROA <span class="hint" id="rpkiHint"></span></div>
+    <div id="rpkiStrips"></div>
+    <div class="legend">
+      <span><i class="tick"></i>one weekly sample of 30 prefixes</span>
+      <span><i class="tick" style="background:var(--ink); width:4px"></i>pooled estimate</span>
+      <span><i style="background:rgba(255,255,255,0.18)"></i>95% confidence interval</span>
+    </div>
+  </div>
+</section>
+
+<section>
   <h2>Try the Detector<span class="rule"></span></h2>
   <div class="panel">
     <div class="panel-title">What would the monitor do if this announcement showed up? <span class="hint">Same code path as the live monitor · nothing is logged</span></div>
@@ -639,6 +730,12 @@
     </form>
     <div class="sim-steps" id="simSteps" aria-live="polite"></div>
   </div>
+</section>
+
+<section>
+  <h2>Tested Against Real Incidents<span class="rule"></span></h2>
+  <p class="section-lede">The same detection code, run over what RIPE's route collectors actually recorded during four documented incidents (raw RIS archives). A miss is shown as a miss.</p>
+  <div class="incident-grid" id="incidentGrid"><div class="empty">Loading…</div></div>
 </section>
 
 <section>
@@ -659,6 +756,7 @@
     </select>
     <button onclick="loadEvents()">Refresh</button>
   </div>
+  <p class="events-note" id="eventsNote"></p>
   <div class="table-wrap">
     <table id="eventsTable">
       <thead>
@@ -677,7 +775,7 @@
   <div class="foot-grid">
     <div>
       <h3>About</h3>
-      <p>Checks live BGP announcements for India's largest ISPs against a daily baseline and RPKI. For personal and educational use, not an authoritative source on Indian routing.</p>
+      <p>Checks live BGP announcements for India's largest ISPs against a daily baseline and RPKI, keeps a captured history, and is tested on archived real incidents. For personal and educational use, not an authoritative source on Indian routing.</p>
       <p><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor" target="_blank" rel="noopener">Source code and method on GitHub</a></p>
     </div>
     <div>
@@ -685,7 +783,8 @@
       <ul>
         <li><a href="https://ris-live.ripe.net/" target="_blank" rel="noopener">RIPE RIS Live</a>: real-time BGP updates</li>
         <li><a href="https://stat.ripe.net/docs/data_api" target="_blank" rel="noopener">RIPEstat Data API</a>: announced prefixes, RPKI validation, AS holders</li>
-        <li><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/blob/main/docs/baseline-history.json" target="_blank" rel="noopener">Daily baseline history</a> (committed by CI)</li>
+        <li><a href="https://data.ris.ripe.net/" target="_blank" rel="noopener">RIPE RIS raw data</a>: archived updates for the incident replay</li>
+        <li><a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/tree/main/docs/history" target="_blank" rel="noopener">Captured history</a> and <a href="https://github.com/HalcyonVector/India-BGP-Hijack-Monitor/blob/main/docs/baseline-history.json" target="_blank" rel="noopener">baseline history</a> (committed by CI)</li>
       </ul>
     </div>
     <div>
@@ -694,6 +793,7 @@
         <li><a href="https://www.rfc-editor.org/rfc/rfc4271" target="_blank" rel="noopener">RFC 4271</a>: BGP-4</li>
         <li><a href="https://www.rfc-editor.org/rfc/rfc6480" target="_blank" rel="noopener">RFC 6480</a>: RPKI infrastructure</li>
         <li><a href="https://www.rfc-editor.org/rfc/rfc6811" target="_blank" rel="noopener">RFC 6811</a>: BGP prefix origin validation</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc7908" target="_blank" rel="noopener">RFC 7908</a>: route-leak problem definition</li>
         <li><a href="https://www.ripe.net/publications/news/industry-developments/youtube-hijacking-a-ripe-ncc-ris-case-study" target="_blank" rel="noopener">YouTube hijacking: a RIPE NCC RIS case study</a> (2008)</li>
       </ul>
     </div>
@@ -860,22 +960,24 @@ const _wakeTimer = setInterval(() => {
 
 async function showSavedData() {
   const local = readCache();
-  let snap = null;
-  if (!IS_LOCAL) {
-    try {
-      const r = await fetch('../docs/dashboard-snapshot.json', { cache: 'no-cache' });
-      if (r.ok) snap = await r.json();
-    } catch { /* no snapshot: the page just waits for the server */ }
-  }
-  const best = [local, snap].filter(x => x?.saved_at).sort((a, b) => b.saved_at - a.saved_at)[0];
+  // The snapshot comes from the last 20-minute CI capture, so it is never
+  // the empty view of a server that has only just woken up.
+  const snap = await fetchDoc('dashboard-snapshot.json');
+  const best = [local, snap].filter(x => x?.saved_at && x.status?.messages_seen > 0)
+    .sort((a, b) => b.saved_at - a.saved_at)[0];
   if (!best || _serverUp) return;
   _savedAt = best.saved_at;
+  _showingSaved = true;
   if (best.live) await loadLive(best.live);
   if (best.status) loadStatus(best.status);
   if (best.asns) loadAsns(best.asns);
   if (best.events) loadEvents(best.events);
-  if (best.drift) loadDrift(best.drift);
 }
+
+// True while panels show saved data. A server that has just woken has an
+// empty database for a minute or so; the saved panels stay until it has
+// something real to replace them with.
+let _showingSaved = false;
 
 function setApiErrorBanner(show) {
   const el = document.getElementById('apiErrorBanner');
@@ -904,6 +1006,7 @@ async function loadStatus(saved) {
     else text = `Server up, last BGP update ${timeAgo(s.last_message_at)}`;
     badge.textContent = text;
     badge.className = 'live-badge' + (isLive ? ' live' : '');
+    if (_showingSaved && !s.messages_seen) return;  // keep the saved tiles until the feed starts
   }
 
   // Average over the last 5 complete-ish minutes, across all tracked ASNs.
@@ -918,7 +1021,8 @@ async function loadStatus(saved) {
   const tiles = [
     { value: compactNumber(s.baseline_prefix_count), label: 'Baseline prefixes', sub: `${s.tracked_asn_count} Indian ASNs` },
     { value: perMin === null ? '—' : compactNumber(perMin), label: 'Prefix updates / min', sub: 'avg, last 5 min' },
-    { value: compactNumber(s.messages_seen ?? 0), label: 'Messages processed', sub: s.started_at ? `since ${new Date(s.started_at * 1000).toLocaleDateString()}` : '' },
+    { value: compactNumber(s.messages_seen ?? 0), label: 'Messages processed',
+      sub: saved ? `in the capture saved ${timeAgo(_savedAt)}` : s.started_at ? `since the server woke, ${timeAgo(s.started_at)}` : '' },
     { value: s.total_events, label: 'Events flagged',
       cls: sev.critical > 0 ? 'critical' : '',
       sub: `<span class="c">${sev.critical ?? 0} critical</span> · <span class="w">${sev.warning ?? 0} warning</span> · ${sev.info ?? 0} info` },
@@ -1024,6 +1128,17 @@ async function loadEvents(saved) {
   // Only the unfiltered list is saved for the next visit.
   const events = saved ?? (sev ? await fetchApi(null, `/api/events?severity=${sev}`) : await fetchApi('events', '/api/events'));
   if (!events) return;
+  const note = document.getElementById('eventsNote');
+  if (saved) {
+    _eventsAreSaved = events.length > 0;
+    note.textContent = `From the capture saved ${timeAgo(_savedAt)}. The full record is under Who Announces Inside Whose Space.`;
+  } else if (_eventsAreSaved && !events.length && !sev) {
+    note.textContent = `From the capture saved ${timeAgo(_savedAt)}. Nothing flagged since the server woke.`;
+    return;  // a freshly woken server has no events yet; keep the saved ones
+  } else {
+    _eventsAreSaved = false;
+    note.textContent = 'Flagged since the server last woke. The full record is under Who Announces Inside Whose Space.';
+  }
 
   const body = document.getElementById('eventsBody');
   const emptyMsg = document.getElementById('emptyMsg');
@@ -1046,14 +1161,20 @@ async function loadEvents(saved) {
       <td>AS${e.expected_asn}</td>
       <td>AS${e.observed_origin_asn ?? '?'}${e.observed_origin_org ? `<div class="asn-org">${esc(e.observed_origin_org)}</div>` : ''}</td>
       <td class="${e.rpki_status?.startsWith('invalid') ? 'rpki-invalid' : ''}">${e.rpki_status ?? '—'}</td>
-      <td class="why" title="${esc(WHY[e.severity] ?? '')}"><span class="why-tag ${e.severity}">${WHY_SHORT[e.severity] ?? ''}</span></td>
+      <td class="why" title="${esc(whyLong(e))}"><span class="why-tag ${e.severity}">${whyShort(e)}</span></td>
     </tr>
   `).join(''));
   _latestEvent = events[0];
 }
 
 let _latestEvent = null;
+let _eventsAreSaved = false;
 const EVENTS_COLLAPSED = 12;
+const isLeak = e => e.event_type === 'possible_route_leak';
+const whyShort = e => isLeak(e) ? 'Tier-1 > network > Tier-1' : (WHY_SHORT[e.severity] ?? '');
+const whyLong = e => isLeak(e)
+  ? 'A network that isn\'t Tier-1 sits between two Tier-1s in the path: it may be passing one backbone\'s routes to another (a route leak). Observed ASN is that network. Heuristic.'
+  : (WHY[e.severity] ?? '');
 let _showAllEvents = false;
 
 const WHY_SHORT = {
@@ -1095,10 +1216,52 @@ function renderSparkline(history) {
   `;
 }
 
-async function loadDrift(saved) {
-  if (saved && _serverUp) return;
-  const d = saved ?? await fetchApi('drift', '/api/baseline-drift');
-  if (!d) return;
+// ---- Committed data files (served by GitHub Pages; no server needed) -------
+// CI commits the baseline history, the capture history, the RPKI samples and
+// the incident replay to docs/. They change a few times a day at most, so
+// reading them straight from Pages keeps these panels instant and means they
+// never wait for (or wake) the Render instance.
+async function fetchDoc(path) {
+  try {
+    const r = await fetch(`../docs/${path}`, { cache: 'no-cache' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+const plural = (n, one, many = one + 's') => n === 1 ? one : many;
+
+function shortAsn(asn, org) {
+  return SHORT_NAMES[asn] || shortHolder(asn, org);
+}
+
+function dateShort(isoOrEpoch) {
+  const d = typeof isoOrEpoch === 'number' ? new Date(isoOrEpoch * 1000) : new Date(isoOrEpoch);
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
+
+// Mirrors backend/detector/baseline_drift.py, on the same committed file.
+function computeDrift(snaps) {
+  snaps = [...(snaps || [])].sort((a, b) => (a.generated_at_utc || '').localeCompare(b.generated_at_utc || ''));
+  if (snaps.length < 2) return { status: 'insufficient_history', snapshots: snaps.length,
+    message: `Only ${snaps.length} baseline snapshot(s) so far; drift needs at least 2. CI adds one a day.` };
+  const a = snaps[0], b = snaps[snaps.length - 1];
+  const asns = [...new Set([...Object.keys(a.per_asn || {}), ...Object.keys(b.per_asn || {})])].sort((x, y) => x - y);
+  return {
+    status: 'ok', snapshots: snaps.length,
+    compared: { from: a.generated_at_utc, to: b.generated_at_utc },
+    total_before: a.total_prefixes, total_after: b.total_prefixes,
+    total_history: snaps.map(s => ({ date: s.generated_at_utc, total: s.total_prefixes })),
+    per_asn_drift: asns.map(x => ({ asn: +x, before: a.per_asn[x] ?? 0, after: b.per_asn[x] ?? 0 }))
+      .filter(r => r.before !== r.after).map(r => ({ ...r, delta: r.after - r.before })),
+  };
+}
+
+let _baselineHistory = null;
+
+async function loadDrift() {
+  _baselineHistory = await fetchDoc('baseline-history.json') ?? _baselineHistory;
+  if (!_baselineHistory) return;
+  const d = computeDrift(_baselineHistory);
   const wrap = document.getElementById('driftWrap');
 
   if (d.status === 'insufficient_history') {
@@ -1130,6 +1293,232 @@ async function loadDrift(saved) {
       total ${compactNumber(d.total_before)} → ${compactNumber(d.total_after)}
     </div>
   `);
+}
+
+// ---- Captured history (CI runs the monitor 4x a day; docs/history/) ------
+
+const SEV_COLOUR = { critical: 'var(--critical)', warning: 'var(--warning)', info: 'var(--announce)' };
+
+function renderDailyFlags(days) {
+  const shown = days.slice(-60);
+  const w = 600, h = 120, gap = 3, n = Math.max(shown.length, 14);
+  const bw = (w - gap * (n - 1)) / n;
+  const max = Math.max(1, ...shown.map(d => d.flags.critical + d.flags.warning + d.flags.info));
+  let bars = '';
+  shown.forEach((d, i) => {
+    let y = h;
+    const x = (i * (bw + gap)).toFixed(1);
+    const tip = `${d.date}: ${d.flags.critical} critical, ${d.flags.warning} warning, ${d.flags.info} info; ${Math.round(d.minutes)} min watched in ${d.runs} capture${d.runs === 1 ? '' : 's'}`;
+    let any = false;
+    for (const sev of ['info', 'warning', 'critical']) {
+      const v = d.flags[sev] || 0;
+      if (!v) continue;
+      any = true;
+      const bh = v / max * (h - 4);
+      y -= bh;
+      bars += `<rect x="${x}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" style="fill:${SEV_COLOUR[sev]}"><title>${tip}</title></rect>`;
+    }
+    if (!any) bars += `<rect x="${x}" y="${h - 1}" width="${bw.toFixed(1)}" height="1" style="fill:var(--border)"><title>${tip}</title></rect>`;
+  });
+  const first = shown[0]?.date, last = shown[shown.length - 1]?.date;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img"
+            aria-label="Distinct flags per captured day, peak ${max}">${bars}</svg>
+    <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-muted); margin-top:4px;">
+      <span>${first ? dateShort(first) : ''}</span><span>${last && last !== first ? dateShort(last) : ''}</span>
+    </div>`;
+}
+
+function renderHistory(days, flags) {
+  if (!days?.length) {
+    document.getElementById('histChart').innerHTML = `<div class="empty">No captures yet. The capture job runs four times a day and this fills in from the first run.</div>`;
+    return;
+  }
+  const minutes = days.reduce((s, d) => s + d.minutes, 0);
+  const runs = days.reduce((s, d) => s + d.runs, 0);
+  const messages = days.reduce((s, d) => s + d.messages, 0);
+  const entries = flags?.entries || [];
+  const leaks = entries.filter(e => e.type === 'possible_route_leak').length;
+  const crit = entries.filter(e => e.severity === 'critical').length;
+  document.getElementById('histHint').textContent = `${runs} ${plural(runs, "capture")} over ${days.length} ${plural(days.length, "day")}`;
+  document.getElementById('histStats').innerHTML = [
+    [`${(minutes / 60).toFixed(1)} h`, 'watched'],
+    [compactNumber(messages), 'BGP messages'],
+    [compactNumber(entries.length - leaks), `distinct flags (${flags?.keep_days ?? 90} days)`],
+    [crit, 'critical'],
+    [leaks, 'possible leaks'],
+  ].map(([v, l]) => `<div><b>${v}</b>${l}</div>`).join('');
+  document.getElementById('histChart').innerHTML = renderDailyFlags(days);
+
+  // Churn: prefix updates per hour watched, per 1,000 baseline prefixes.
+  const latest = _baselineHistory?.[_baselineHistory.length - 1]?.per_asn || {};
+  const totals = {};
+  for (const d of days) for (const [asn, [a, w]] of Object.entries(d.updates)) totals[asn] = (totals[asn] || 0) + a + w;
+  const hours = minutes / 60;
+  const rows = Object.keys(SHORT_NAMES).map(asn => ({
+    asn: +asn, rate: latest[asn] && hours ? (totals[asn] || 0) / hours / (latest[asn] / 1000) : 0,
+  })).sort((x, y) => y.rate - x.rate);
+  const maxR = Math.max(1, rows[0]?.rate || 1);
+  document.getElementById('churnBars').innerHTML = rows.map(r => `
+    <div class="share-row" title="${compactNumber(totals[r.asn] || 0)} updates over ${hours.toFixed(1)} h, ${compactNumber(latest[r.asn] || 0)} baseline prefixes">
+      <span class="nm">${SHORT_NAMES[r.asn]}</span>
+      <span class="bar"><span style="width:${(r.rate / maxR * 100).toFixed(1)}%"></span></span>
+      <span class="n">${r.rate >= 10 ? Math.round(r.rate) : r.rate.toFixed(1)}</span>
+    </div>`).join('');
+}
+
+// ---- Who announces inside whose space (from docs/history/flags.json) -----
+
+const DELEG_COLLAPSED = 12;
+let _showAllDeleg = false;
+
+function renderDelegations(flags, days) {
+  const wrap = document.getElementById('delegWrap');
+  const entries = (flags?.entries || []);
+  const origin = entries.filter(e => e.type !== 'possible_route_leak');
+  if (!origin.length) {
+    wrap.innerHTML = `<div class="empty">Nothing flagged in the captures yet.</div>`;
+  } else {
+    const groups = {};
+    for (const e of origin) {
+      const g = groups[`${e.expected_asn}|${e.observed_asn}`] ??= {
+        owner: e.expected_asn, asn: e.observed_asn, org: e.observed_org, prefixes: 0,
+        valid: 0, none: 0, invalid: 0, runs: 0, last: 0, first: Infinity };
+      g.prefixes += 1;
+      if (e.rpki_status === 'valid') g.valid += 1;
+      else if (e.rpki_status?.startsWith('invalid')) g.invalid += 1;
+      else g.none += 1;
+      g.runs = Math.max(g.runs, e.runs_seen);
+      g.last = Math.max(g.last, e.last_seen);
+      g.first = Math.min(g.first, e.first_seen);
+      g.org ||= e.observed_org;
+    }
+    const rows = Object.values(groups).sort((a, b) => b.invalid - a.invalid || b.none - a.none || b.prefixes - a.prefixes);
+    const shown = _showAllDeleg ? rows : rows.slice(0, DELEG_COLLAPSED);
+    const validPct = Math.round(origin.filter(e => e.rpki_status === 'valid').length / origin.length * 100);
+    const owners = new Set(rows.map(r => r.owner)).size;
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Space owned by</th><th>Announced by</th><th>Prefixes</th><th>RPKI</th><th>Captures seen in</th><th>Last seen</th></tr></thead>
+        <tbody>${shown.map(r => `
+          <tr>
+            <td>${esc(SHORT_NAMES[r.owner] || `AS${r.owner}`)}</td>
+            <td>AS${r.asn}${r.org ? `<div class="asn-org">${esc(r.org)}</div>` : ''}</td>
+            <td>${r.prefixes}</td>
+            <td><span class="rpki-mix">${r.valid ? `<span class="v">${r.valid} valid</span>` : ''}${r.none ? `<span class="u">${r.none} no ROA</span>` : ''}${r.invalid ? `<span class="x">${r.invalid} invalid</span>` : ''}</span></td>
+            <td>${r.runs}</td>
+            <td>${timeAgo(r.last)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="table-caption"><b>${rows.length}</b> ${plural(rows.length, 'network')} announced <b>${origin.length}</b> ${plural(origin.length, 'prefix', 'prefixes')} inside the space of <b>${owners}</b> tracked ${plural(owners, 'ISP')}. <b>${validPct}%</b> of those prefixes are authorised by the ISP's own ROA: mostly business customers announcing a block their ISP assigned to them, which is normal. "No ROA" rows can't be confirmed either way; "invalid" rows are the ones to look at.</div>`;
+    const toggle = document.getElementById('delegToggle');
+    toggle.style.display = rows.length > DELEG_COLLAPSED ? '' : 'none';
+    toggle.textContent = _showAllDeleg ? 'Show fewer' : `Show all ${rows.length}`;
+    toggle.onclick = () => { _showAllDeleg = !_showAllDeleg; renderDelegations(flags, days); };
+  }
+
+  const leaks = entries.filter(e => e.type === 'possible_route_leak');
+  const runs = (days || []).reduce((s, d) => s + d.runs, 0);
+  document.getElementById('leakWrap').innerHTML = leaks.length ? `
+    <table>
+      <thead><tr><th>Possible route leak</th><th>Passed on by</th><th>Tier-1 > network > Tier-1</th><th>Captures seen in</th><th>Last seen</th></tr></thead>
+      <tbody>${leaks.map(e => `
+        <tr>
+          <td>${esc(SHORT_NAMES[e.expected_asn] || `AS${e.expected_asn}`)} · ${esc(e.prefix)}</td>
+          <td>AS${e.observed_asn}${e.observed_org ? `<div class="asn-org">${esc(e.observed_org)}</div>` : ''}</td>
+          <td class="path">${esc((e.as_path || []).join(' > '))}</td>
+          <td>${e.runs_seen}</td>
+          <td>${timeAgo(e.last_seen)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="table-caption">A network that isn't Tier-1 sitting between two Tier-1 networks is passing one backbone's routes to another, which is what a leak looks like. It's a heuristic without relationship data, so treat these as leads, not verdicts.</div>`
+    : `<div class="table-caption" style="border-top:0">No route-leak pattern (a smaller network between two Tier-1s) in ${runs} capture${runs === 1 ? '' : 's'}.</div>`;
+}
+
+// ---- RPKI coverage pooled over weekly samples ----------------------------
+
+// Wilson score interval: honest at small n and near 0% / 100%.
+function wilson(k, n, z = 1.96) {
+  if (!n) return [0, 0];
+  const p = k / n, d = 1 + z * z / n;
+  const c = (p + z * z / (2 * n)) / d;
+  const hw = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+  return [Math.max(0, c - hw), Math.min(1, c + hw)];
+}
+
+function renderRpkiHistory(hist) {
+  const el = document.getElementById('rpkiStrips');
+  if (!hist?.length) { el.innerHTML = `<div class="empty">No RPKI samples yet.</div>`; return; }
+  const per = {};
+  for (const wk of hist) for (const [asn, [n, k]] of Object.entries(wk.sampled)) {
+    (per[asn] ??= { n: 0, k: 0, weeks: [] });
+    per[asn].n += n; per[asn].k += k; per[asn].weeks.push(n ? k / n : 0);
+  }
+  const rows = Object.entries(per).map(([asn, r]) => ({ asn: +asn, ...r, p: r.k / r.n, ci: wilson(r.k, r.n) }))
+    .sort((a, b) => a.p - b.p);
+  document.getElementById('rpkiHint').textContent =
+    `${hist.length} weekly samples, ${dateShort(hist[0].generated_at_utc)} to ${dateShort(hist[hist.length - 1].generated_at_utc)}`;
+  const W = 600, H = 24;
+  const x = v => (v * W).toFixed(1);
+  el.innerHTML = rows.map(r => {
+    // Weekly samples as a rug of thin ticks: unlike dots, they survive the
+    // strip being stretched to a fixed height at any width.
+    const dots = r.weeks.map(v => `<rect x="${(v * W - 1).toFixed(1)}" y="6" width="2" height="${H - 12}" style="fill:rgba(255,255,255,0.5)"/>`).join('');
+    return `<div class="rpki-row" title="${r.k} of ${r.n} sampled prefixes have a ROA">
+      <span class="nm">${SHORT_NAMES[r.asn] || `AS${r.asn}`}</span>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" role="img" style="display:block"
+           aria-label="${SHORT_NAMES[r.asn]}: ${(r.p * 100).toFixed(1)}% with a ROA, 95% CI ${(r.ci[0] * 100).toFixed(1)} to ${(r.ci[1] * 100).toFixed(1)}%">
+        <rect x="0" y="${H / 2 - 0.5}" width="${W}" height="1" style="fill:var(--border)"/>
+        <rect x="${x(r.ci[0])}" y="2" width="${Math.max(2, (r.ci[1] - r.ci[0]) * W).toFixed(1)}" height="${H - 4}" rx="3" style="fill:rgba(255,255,255,0.18)"/>
+        ${dots}
+        <rect x="${(r.p * W - 2).toFixed(1)}" y="0" width="4" height="${H}" style="fill:var(--ink)"/>
+      </svg>
+      <span class="est ${r.p < 0.7 ? 'low' : ''}">${(r.p * 100).toFixed(1)}%<small>${(r.ci[0] * 100).toFixed(0)} to ${(r.ci[1] * 100).toFixed(0)}%, n=${r.n}</small></span>
+    </div>`;
+  }).join('') + `<div class="rpki-axis"><span></span><div><span>0%</span><span>50%</span><span>100%</span></div><span></span></div>`
+    + `<p class="panel-note">Each week checks a fresh random sample of 30 prefixes per network, so single weeks swing by several points from chance alone. Pooling every week gives a much tighter estimate.</p>`;
+}
+
+// ---- Replayed incidents (docs/validation/replay.json) ---------------------
+
+function renderIncidents(rep) {
+  const el = document.getElementById('incidentGrid');
+  if (!rep?.incidents?.length) { el.innerHTML = `<div class="empty">No replay results committed yet.</div>`; return; }
+  el.innerHTML = rep.incidents.map(i => {
+    const flag = i.flags?.[0], leak = i.leaks?.[0];
+    const owner = Object.entries(i.baseline).map(([p, a]) => `${p} (AS${a})`).join(', ');
+    let evidence = '';
+    if (i.caught && leak && i.expect.leaker) evidence = `<div class="path" title="Tier-1 > leaker > ... > Tier-1">${leak.example_sandwich.join(' > ')}</div>`;
+    else if (i.caught && flag) evidence = `<div class="path" title="Example path, collector peer first">${flag.example_path.join(' > ')}</div>`;
+    const nums = i.caught ? `
+      <div class="nums">
+        <span>First flagged <b>${new Date(i.first_detection_utc).toISOString().slice(11, 19)} UTC</b></span>
+        ${i.expect.leaker ? `<span>Leaker <b>AS${i.expect.leaker}</b> across <b>${leak.prefixes}</b> prefixes</span>` : `<span><b>${i.announcements_flagged}</b> of ${i.announcements_in_scope} announcements flagged</span>`}
+        <span>Seen by <b>${(i.expect.leaker ? leak : flag).peers}</b> collector peers</span>
+      </div>` : `<div class="nums"><span><b>${i.announcements_in_scope}</b> announcements in scope, <b>0</b> flagged</span></div>`;
+    return `<div class="panel incident">
+      <span class="verdict-pill ${i.caught ? '' : 'missed'}">${i.caught ? 'Caught' : 'Missed'}</span>
+      <h3>${esc(i.name)}</h3>
+      <div class="meta">${dateShort(i.date)} ${i.date.slice(0, 4)} · ${esc(i.kind)} · ${esc(i.collector)} · victim ${esc(owner)}</div>
+      <p>${esc(i.summary)}</p>
+      ${nums}${evidence}
+      ${i.note ? `<p class="note">${esc(i.note)}</p>` : ''}
+      <a href="${esc(i.source)}" target="_blank" rel="noopener">Incident write-up</a>
+    </div>`;
+  }).join('');
+}
+
+async function loadAnalysis() {
+  await loadDrift();  // also loads the baseline history the churn panel needs
+  const [days, flags, rpki, replay] = await Promise.all([
+    fetchDoc('history/monitor-daily.json'), fetchDoc('history/flags.json'),
+    fetchDoc('history/rpki-coverage.json'), fetchDoc('validation/replay.json'),
+  ]);
+  renderHistory(days, flags);
+  renderDelegations(flags, days);
+  renderRpkiHistory(rpki);
+  renderIncidents(replay);
 }
 
 // ---- Live traffic -------------------------------------------------------
@@ -1192,6 +1581,7 @@ async function loadLive(saved) {
   if (saved && _serverUp) return;
   const live = saved ?? await fetchApi('live', '/api/live');
   if (!live) return;
+  if (!saved && _feedIsSaved && !live.feed.length) return;  // just woken: keep the saved view for now
   _live = live;
 
   // Feed. The first live response replaces saved rows outright: after a
@@ -1417,11 +1807,12 @@ async function poll() {
     _polling = false;
   }
 }
-poll(); loadDrift();   // start waking the server first...
+poll();                // start waking the server first...
 showSavedData();       // ...and meanwhile draw the newest saved data
+loadAnalysis();        // committed files from Pages: never waits for the server
 setInterval(poll, POLL_MS);
-// Drift changes once a day (it reads a committed file).
-setInterval(() => loadDrift(), 10 * 60 * 1000);
+// The committed files change a few times a day at most.
+setInterval(loadAnalysis, 30 * 60 * 1000);
 </script>
 </body>
 </html>

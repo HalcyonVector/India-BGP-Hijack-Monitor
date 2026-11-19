@@ -1,0 +1,352 @@
+{
+ "generated_at": 1795082568.0461707,
+ "incidents": [
+  {
+   "id": "youtube-2008",
+   "name": "Pakistan Telecom hijacks YouTube",
+   "date": "2008-02-24",
+   "kind": "hijack",
+   "summary": "AS17557 announced 208.65.153.0/24, a more-specific of YouTube's /22, and took YouTube offline worldwide for about two hours.",
+   "source": "https://www.ripe.net/publications/news/industry-developments/youtube-hijacking-a-ripe-ncc-ris-case-study",
+   "baseline": {
+    "208.65.152.0/22": 36561
+   },
+   "expect": {
+    "origin": 17557
+   },
+   "collector": "rrc00",
+   "note": null,
+   "files": [
+    "https://data.ris.ripe.net/rrc00/2008.02/updates.20080224.1845.gz",
+    "https://data.ris.ripe.net/rrc00/2008.02/updates.20080224.1850.gz",
+    "https://data.ris.ripe.net/rrc00/2008.02/updates.20080224.1855.gz"
+   ],
+   "window_utc": [
+    "2008-02-24T18:45Z",
+    "2008-02-24T18:50Z",
+    "2008-02-24T18:55Z"
+   ],
+   "announcements_in_scope": 27,
+   "announcements_flagged": 27,
+   "announcements_clean": 0,
+   "flags": [
+    {
+     "prefix": "208.65.153.0/24",
+     "origin": 17557,
+     "event_type": "unexpected_more_specific",
+     "peers": 11,
+     "first_seen": 1203878877,
+     "example_path": [
+      3333,
+      12859,
+      6461,
+      3491,
+      17557
+     ]
+    }
+   ],
+   "leaks": [],
+   "first_detection_utc": "2008-02-24T18:47:57Z",
+   "caught": true
+  },
+  {
+   "id": "route53-2018",
+   "name": "eNet hijacks Amazon Route 53 DNS",
+   "date": "2018-04-24",
+   "kind": "hijack",
+   "summary": "AS10297 announced /24s inside Amazon's Route 53 address space, redirecting DNS for a cryptocurrency wallet site to a phishing server.",
+   "source": "https://blog.cloudflare.com/bgp-leaks-and-crypto-currencies/",
+   "baseline": {
+    "205.251.192.0/21": 16509
+   },
+   "expect": {
+    "origin": 10297
+   },
+   "collector": "rrc00",
+   "note": null,
+   "files": [
+    "https://data.ris.ripe.net/rrc00/2018.04/updates.20180424.1100.gz",
+    "https://data.ris.ripe.net/rrc00/2018.04/updates.20180424.1105.gz",
+    "https://data.ris.ripe.net/rrc00/2018.04/updates.20180424.1110.gz"
+   ],
+   "window_utc": [
+    "2018-04-24T11:00Z",
+    "2018-04-24T11:05Z",
+    "2018-04-24T11:10Z"
+   ],
+   "announcements_in_scope": 14,
+   "announcements_flagged": 10,
+   "announcements_clean": 4,
+   "flags": [
+    {
+     "prefix": "205.251.192.0/24",
+     "origin": 10297,
+     "event_type": "unexpected_more_specific",
+     "peers": 2,
+     "first_seen": 1524567950,
+     "example_path": [
+      6881,
+      15685,
+      6939,
+      10297
+     ]
+    },
+    {
+     "prefix": "205.251.193.0/24",
+     "origin": 10297,
+     "event_type": "unexpected_more_specific",
+     "peers": 2,
+     "first_seen": 1524567950,
+     "example_path": [
+      6881,
+      15685,
+      6939,
+      10297
+     ]
+    },
+    {
+     "prefix": "205.251.195.0/24",
+     "origin": 10297,
+     "event_type": "unexpected_more_specific",
+     "peers": 2,
+     "first_seen": 1524567950,
+     "example_path": [
+      6881,
+      15685,
+      6939,
+      10297
+     ]
+    },
+    {
+     "prefix": "205.251.197.0/24",
+     "origin": 10297,
+     "event_type": "unexpected_more_specific",
+     "peers": 2,
+     "first_seen": 1524567950,
+     "example_path": [
+      6881,
+      15685,
+      6939,
+      10297
+     ]
+    },
+    {
+     "prefix": "205.251.199.0/24",
+     "origin": 10297,
+     "event_type": "unexpected_more_specific",
+     "peers": 2,
+     "first_seen": 1524567950,
+     "example_path": [
+      6881,
+      15685,
+      6939,
+      10297
+     ]
+    }
+   ],
+   "leaks": [],
+   "first_detection_utc": "2018-04-24T11:05:50Z",
+   "caught": true
+  },
+  {
+   "id": "verizon-leak-2019",
+   "name": "Verizon leaks routes optimised by DQE",
+   "date": "2019-06-24",
+   "kind": "leak",
+   "summary": "AS396531 passed more-specifics it learned from DQE (AS33154) on to Verizon (AS701), which carried them worldwide; Cloudflare and others lost traffic for about two hours.",
+   "source": "https://blog.cloudflare.com/how-verizon-and-a-bgp-optimizer-knocked-large-parts-of-the-internet-offline-today/",
+   "baseline": {
+    "104.16.0.0/12": 13335
+   },
+   "expect": {
+    "leaker": 396531
+   },
+   "collector": "rrc00",
+   "note": null,
+   "files": [
+    "https://data.ris.ripe.net/rrc00/2019.06/updates.20190624.1035.gz",
+    "https://data.ris.ripe.net/rrc00/2019.06/updates.20190624.1040.gz",
+    "https://data.ris.ripe.net/rrc00/2019.06/updates.20190624.1045.gz"
+   ],
+   "window_utc": [
+    "2019-06-24T10:35Z",
+    "2019-06-24T10:40Z",
+    "2019-06-24T10:45Z"
+   ],
+   "announcements_in_scope": 3687,
+   "announcements_flagged": 40,
+   "announcements_clean": 3647,
+   "flags": [
+    {
+     "prefix": "104.28.28.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.28.16.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.24.4.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.28.20.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.27.172.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.27.92.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.31.76.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.27.160.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.27.164.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    },
+    {
+     "prefix": "104.18.40.0/22",
+     "origin": 12389,
+     "event_type": "unexpected_more_specific",
+     "peers": 1,
+     "first_seen": 1561372894,
+     "example_path": [
+      49673,
+      48858,
+      12389
+     ]
+    }
+   ],
+   "leaks": [
+    {
+     "leaker": 396531,
+     "prefixes": 62,
+     "peers": 24,
+     "first_seen": 1561372500,
+     "example_sandwich": [
+      701,
+      396531,
+      33154,
+      3356
+     ]
+    }
+   ],
+   "first_detection_utc": "2019-06-24T10:35:00Z",
+   "caught": true
+  },
+  {
+   "id": "cloudflare-dns-2024",
+   "name": "Eletronet hijacks Cloudflare's 1.1.1.1, and 1.1.1.0/24 leaks",
+   "date": "2024-06-27",
+   "kind": "hijack + leak",
+   "summary": "AS267613 announced 1.1.1.1/32 inside Cloudflare's 1.1.1.0/24, and the /24 itself was passed on through AS262504, making the public DNS resolver unreachable for some networks.",
+   "source": "https://blog.cloudflare.com/cloudflare-1111-incident-on-june-27-2024/",
+   "baseline": {
+    "1.1.1.0/24": 13335
+   },
+   "expect": {
+    "leaker": 262504
+   },
+   "collector": "rrc15",
+   "note": "The /32 hijack never reached a RIS collector (no collector peer accepted a /32). rrc15 (Sao Paulo) did record the leak, as paths like 1031 > 262504 > 267613 > 13335, but no Tier-1 network sits on both sides of it, so the Tier-1 heuristic misses it.",
+   "files": [
+    "https://data.ris.ripe.net/rrc15/2024.06/updates.20240627.1850.gz",
+    "https://data.ris.ripe.net/rrc15/2024.06/updates.20240627.1855.gz",
+    "https://data.ris.ripe.net/rrc15/2024.06/updates.20240627.1900.gz"
+   ],
+   "window_utc": [
+    "2024-06-27T18:50Z",
+    "2024-06-27T18:55Z",
+    "2024-06-27T19:00Z"
+   ],
+   "announcements_in_scope": 41,
+   "announcements_flagged": 0,
+   "announcements_clean": 41,
+   "flags": [],
+   "leaks": [],
+   "first_detection_utc": null,
+   "caught": false
+  }
+ ]
+}

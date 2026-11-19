@@ -1,4 +1,4 @@
--- India BGP Hijack/Leak Monitor schema
+-- India BGP Hijack Monitor schema
 
 CREATE TABLE IF NOT EXISTS baseline_prefixes (
     asn INTEGER NOT NULL,

@@ -144,6 +144,49 @@ def upstream_from_path(path):
     return hops[-2]
 
 
+# Transit-free ("Tier-1") networks and their sibling ASNs. They reach the
+# whole internet through peering with each other, never as anyone's
+# customer, so a smaller network sitting *between* two of them in a path is
+# passing one Tier-1's routes on to another: the shape of a route leak
+# (RFC 7908, type 1 "hairpin" / type 4). A heuristic, not a relationship
+# database: see docs/limitations.md.
+TRANSIT_FREE = {
+    174,                # Cogent
+    209, 3356, 3549,    # Lumen (CenturyLink / Level 3)
+    701, 702, 703,      # Verizon
+    1239,               # Sprint
+    1299,               # Arelion (Telia)
+    2828,               # XO (Verizon)
+    2914,               # NTT
+    3257,               # GTT
+    3320,               # Deutsche Telekom
+    3491,               # PCCW
+    5511,               # Orange
+    6453,               # Tata Communications (global)
+    6461,               # Zayo
+    6762,               # Telecom Italia Sparkle
+    6830,               # Liberty Global
+    7018,               # AT&T
+    12956,              # Telxius
+}
+
+
+def find_route_leak(path):
+    """If a non-Tier-1 network sits between two Tier-1s in the path, return
+    (leaker, [tier1_left, ..., tier1_right]); otherwise None. The leaker is
+    the network that handed the route to the left-hand Tier-1, i.e. the one
+    exporting a route it learned from a provider or peer up to another one.
+    RIS paths run from the collector's peer (left) to the origin (right)."""
+    hops = [h for h in collapse_path(path) if not isinstance(h, list)]
+    last_t1 = None
+    for i, hop in enumerate(hops):
+        if hop in TRANSIT_FREE:
+            if last_t1 is not None and i - last_t1 > 1:
+                return hops[last_t1 + 1], hops[last_t1:i + 1]
+            last_t1 = i
+    return None
+
+
 def check_rpki(asn, prefix):
     try:
         resp = requests.get(RPKI_URL, params={"resource": asn, "prefix": prefix}, timeout=10)
@@ -227,6 +270,36 @@ def record_normal_activity(conn, data, exact, networks, name_queue):
                     name_queue.put(upstream)
 
 
+def record_route_leak(conn, data, announced, exact, networks, last_flagged, state):
+    """Logs a possible route leak for tracked space: one event per (leaker,
+    tracked network) per dedupe window, since a single leak re-announces
+    hundreds of prefixes and would otherwise flood the table."""
+    found = find_route_leak(data.get("path"))
+    if not found:
+        return
+    leaker, sandwich = found
+    for prefix_str in announced:
+        expected_asn, _ = find_expected_asn(prefix_str, exact, networks)
+        if expected_asn is None:
+            continue
+        key = ("leak", leaker, expected_asn)
+        if time.time() - last_flagged.get(key, 0) < EVENT_DEDUPE_SECONDS:
+            return
+        last_flagged[key] = time.time()
+        store.insert_event(
+            conn, event_type="possible_route_leak", prefix=prefix_str,
+            expected_asn=expected_asn, observed_origin_asn=leaker,
+            observed_origin_org=lookup_asn_org(leaker),
+            as_path=json.dumps(collapse_path(data.get("path"))), rpki_status=None,
+            peer=data.get("peer"), raw_message=json.dumps({"tier1_sandwich": sandwich}),
+            severity="warning", timestamp=data.get("timestamp"),
+        )
+        conn.commit()
+        state["events"] += 1
+        print(f"  [LEAK?] {prefix_str} (AS{expected_asn}) via AS{leaker}: {' > '.join(map(str, sandwich))}")
+        return
+
+
 def _int_or_none(v):
     try:
         return int(v)
@@ -296,6 +369,8 @@ def run_monitor(max_messages=None, max_seconds=None):
             print(f"  [{severity.upper()}] {prefix_str}: expected AS{expected_asn}, "
                   f"observed AS{origin} ({observed_org}) (rpki={rpki_status})")
 
+        record_route_leak(conn, data, announced, exact, networks, last_flagged, state)
+
         if max_messages and state["count"] >= max_messages:
             ws.close()
         if max_seconds and (time.monotonic() - state["start"]) >= max_seconds:
@@ -325,9 +400,11 @@ def run_monitor(max_messages=None, max_seconds=None):
     # time out pings, and drop a connection that has been silent too long.
     def watchdog():
         while not state["stopped"]:
-            time.sleep(15)
+            time.sleep(5)
             ws = state.get("ws")
-            if ws and time.monotonic() - state["last_msg"] > STALL_SECONDS:
+            if ws and timed_out():
+                ws.close()  # a timed run ends on time even if the feed is quiet
+            elif ws and time.monotonic() - state["last_msg"] > STALL_SECONDS:
                 print(f"  [MONITOR] no messages for {STALL_SECONDS}s, reconnecting")
                 state["last_msg"] = time.monotonic()
                 ws.close()
@@ -342,9 +419,8 @@ def run_monitor(max_messages=None, max_seconds=None):
                                                  on_error=on_error)
             state["ws"].run_forever(ping_interval=30, ping_timeout=10)
             state["ws"] = None  # nothing for the watchdog to close while we wait
-            done = (max_messages and state["count"] >= max_messages) or timed_out()
-            if done or max_messages or max_seconds:
-                break  # bounded test runs don't reconnect
+            if max_messages or timed_out():
+                break  # message-capped test runs don't reconnect; timed runs do until time is up
             # Reset the backoff after a connection that worked for a while.
             backoff = 5 if time.monotonic() - connected_at > 120 else min(backoff * 2, 300)
             print(f"  [MONITOR] connection closed, reconnecting in {backoff}s")

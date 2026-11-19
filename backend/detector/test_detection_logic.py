@@ -12,8 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.detector.monitor import (
-    build_expected_lookup, classify_announcement, collapse_path, find_expected_asn, origin_asn_from_path, severity_for,
-    upstream_from_path,
+    build_expected_lookup, classify_announcement, collapse_path, find_expected_asn, find_route_leak, origin_asn_from_path,
+    severity_for, upstream_from_path,
 )
 from db import store
 
@@ -72,6 +72,16 @@ def run_tests():
     # 9. Airtel's untracked mobile ASN (AS45609) on Airtel space is not a hijack either
     v = classify_announcement(sub_prefix, 45609, exact, networks)
     results.append(("untracked sibling (AS45609 on AS24560 space) not flagged", v is not None and not v["flagged"]))
+
+    # 10. Route-leak heuristic: a smaller network between two Tier-1s.
+    # The 2019-06-24 Verizon leak's real path shape: 396531 (Allegheny) took
+    # DQE's routes and handed them to its other provider, Verizon (AS701).
+    ok = (find_route_leak([701, 396531, 33154, 3356, 13335]) == (396531, [701, 396531, 33154, 3356])
+          and find_route_leak([13237, 6461, 7473, 9498, 24560]) is None   # one Tier-1: normal transit
+          and find_route_leak([3356, 1299, 9498, 24560]) is None          # Tier-1s peering directly
+          and find_route_leak([1299, 9498, 9498, 3356, 24560]) == (9498, [1299, 9498, 3356])
+          and find_route_leak([3356, 3549, 1299, 9498]) is None)          # Lumen siblings are one org
+    results.append(("route leak: non-Tier-1 between two Tier-1s, prepends and siblings handled", ok))
 
     all_pass = True
     for name, ok in results:

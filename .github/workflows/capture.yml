@@ -1,0 +1,63 @@
+name: Capture live BGP traffic
+
+# Runs the monitor for 20 minutes four times a day and commits what it saw
+# to docs/history/ (plus the dashboard's first-paint snapshot). This is the
+# project's dataset: the Render instance only watches while someone has the
+# dashboard open, and forgets everything when it sleeps.
+#
+# Budget: ~23 runner minutes a run, ~2,800 a month. Free and unlimited on
+# standard runners because the repo is public; Render isn't touched at all.
+on:
+  schedule:
+    - cron: "41 1,7,13,19 * * *"   # off the hour (GitHub delays :00 jobs) and clear of the 03:07 baseline job
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How long to watch"
+        default: "20"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python db/store.py
+
+      - name: Build baseline against live RIPEstat
+        run: python backend/detector/baseline.py
+
+      - name: Watch RIS Live and update the history files
+        run: python scripts/capture.py --minutes "${{ github.event.inputs.minutes || '20' }}"
+
+      - name: Commit the capture
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/history docs/dashboard-snapshot.json
+          git diff --cached --quiet && echo "no change, skipping commit" && exit 0
+          git commit -m "chore: capture live BGP traffic"
+          for attempt in 1 2 3 4; do
+            git push && exit 0
+            [ "$attempt" = 4 ] && break
+            wait=$((30 * 2 ** (attempt - 1)))
+            echo "push failed (attempt $attempt of 4), retrying in ${wait}s"
+            sleep "$wait"
+            git pull --rebase origin "$GITHUB_REF_NAME" || { git rebase --abort 2>/dev/null; true; }
+          done
+          echo "push failed after 4 attempts"
+          exit 1

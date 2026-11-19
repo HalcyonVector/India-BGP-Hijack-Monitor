@@ -60,16 +60,11 @@ jobs:
               f.write("\n")
           PY
 
-      - name: Snapshot the deployed API for the dashboard's first paint
-        # Wakes the Render instance once a day (~15 min of its free hours).
-        # The script keeps the old snapshot if the API is unreachable.
-        run: python scripts/snapshot_api.py
-
       - name: Commit updated baseline summary
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/baseline-summary.json docs/baseline-history.json docs/dashboard-snapshot.json
+          git add docs/baseline-summary.json docs/baseline-history.json
           git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh baseline summary"
           # Retry the push: on 2026-11-04 a GitHub Git Operations outage failed
           # this step after the baseline had built and passed its tests.

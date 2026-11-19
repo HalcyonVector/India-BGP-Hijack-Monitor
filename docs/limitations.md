@@ -133,3 +133,25 @@
   `workflow_dispatch` manual trigger in the GitHub Actions UI remains a
   reliable fallback if a fresh snapshot is needed before the cron catches
   up.
+- **Route-leak detection is a Tier-1 heuristic, not a relationship model.**
+  `find_route_leak()` flags a path where a network outside a fixed list of
+  transit-free (Tier-1) ASNs sits between two of them. That needs no
+  external data and caught the 2019 Verizon leak in the archived data
+  (`scripts/replay_incidents.py`), naming AS396531. It cannot see a leak
+  between regional networks: the 2024 leak of 1.1.1.0/24 through AS262504
+  was recorded by RIS but has no Tier-1 on both sides, so it was missed.
+  The Tier-1 list is hand-maintained; a network wrongly on or off it would
+  cause false leads or misses. Leak events are `warning`, never `critical`.
+- **The captured history is a sample of time.** `capture.yml` watches for
+  20 minutes four times a day (80 minutes a day). Daily counts describe
+  watched time, which is why churn is normalised per hour watched. An
+  incident that starts and ends between captures is missing from the
+  history, though the live dashboard sees it if someone has it open.
+- **The incident replay uses one or two collectors per incident** and a
+  small hand-written baseline (the victim's block and origin from the cited
+  write-up), not the full Indian baseline. It shows the detection functions
+  work on real recorded data; it is not a recall rate for Indian space.
+- **Weekly RPKI samples swing by chance.** Each week draws a fresh random
+  30 prefixes per network, so a single week for Airtel's AS24560 has ranged
+  from 37% to 67%. The dashboard pools all weeks (570 prefixes per network
+  by November 2026) and shows a 95% Wilson interval instead.

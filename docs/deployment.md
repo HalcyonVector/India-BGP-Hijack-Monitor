@@ -70,10 +70,10 @@
    const DEPLOYED_API_URL = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
    ```
 2. Replace the placeholder with your actual Render URL from Part 1, step 7
-   (no trailing slash). Do the same for `API` in `scripts/snapshot_api.py`.
+   (no trailing slash).
 3. Commit and push:
    ```bash
-   git add frontend/index.html scripts/snapshot_api.py
+   git add frontend/index.html
    git commit -m "Point deployed frontend at the live Render API"
    git push
    ```
@@ -117,9 +117,12 @@ Instead:
    GitHub Pages, straight away, with a note saying how old it is.
 2. **Wake counter.** The badge counts the seconds while the server wakes,
    then live data replaces the saved data automatically.
-3. **Daily snapshot.** The `Daily baseline refresh` workflow runs
-   `scripts/snapshot_api.py`, which wakes the instance once a day (about 15
-   minutes of free hours) and commits a fresh snapshot.
+3. **Snapshot from the captures.** The `Capture live BGP traffic` workflow
+   runs the monitor on a GitHub Actions runner for 20 minutes four times a
+   day and saves the API's responses at the end of each run, so the saved
+   view is always a full one. It never touches Render.
+4. **No empty flash.** The saved panels stay until the woken server has
+   received its first updates, then live data replaces them.
 
 Right after waking, the badge reads "Server up, connecting to the BGP feed"
 for a minute or so until the monitor receives its first update from RIS Live.
@@ -128,9 +131,13 @@ for a minute or so until the monitor receives its first update from RIS Live.
 
 ## Redeploying after code changes
 
-Render auto-redeploys on every push to `main` by default (configurable
-under the service's **Settings** → **Build & Deploy**). Just `git push` as
-usual.
+Render auto-redeploys on every push to `main` by default. `render.yaml`
+sets a `buildFilter` so that commits touching only `docs/`, `frontend/`,
+`scripts/`, workflows or Markdown don't trigger a build: the CI jobs commit
+data up to five times a day, and each build would count against the free
+tier's monthly build minutes. If your service was created before this was
+added, check **Settings** → **Build & Deploy** → **Build Filters** and add
+the same ignored paths by hand if they're missing.
 
 **Caveat**: Render's free tier has no persistent disk, so a redeploy,
 restart or wake from sleep gets a fresh filesystem. Three things self-heal

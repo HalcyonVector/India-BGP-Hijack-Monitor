@@ -51,13 +51,29 @@ jobs:
           with open("docs/rpki-coverage-summary.json", "w") as f:
               json.dump(summary, f, indent=2)
           print(json.dumps(summary, indent=2))
+
+          # Append this week's counts to the history the dashboard pools
+          # (each week is a fresh random sample; see seed_rpki_history.py).
+          path = "docs/history/rpki-coverage.json"
+          try:
+              with open(path) as f:
+                  history = json.load(f)
+          except FileNotFoundError:
+              history = []
+          history.append({
+              "generated_at_utc": summary["generated_at_utc"],
+              "sampled": {str(r["asn"]): [r["sample_size"], r["covered_count"]] for r in rows if r["sample_size"]},
+          })
+          with open(path, "w") as f:
+              json.dump(history, f, separators=(",", ":"))
+              f.write("\n")
           PY
 
       - name: Commit updated RPKI coverage summary
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/rpki-coverage-summary.json
+          git add docs/rpki-coverage-summary.json docs/history/rpki-coverage.json
           git diff --cached --quiet && echo "no change, skipping commit" || git commit -m "chore: refresh RPKI coverage summary"
           # Retry the push so a short GitHub outage doesn't fail the whole run
           # (same fix as refresh-baseline.yml, after the 2026-11-04 outage).

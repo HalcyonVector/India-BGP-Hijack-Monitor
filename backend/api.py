@@ -39,7 +39,7 @@ from backend.detector.rpki_coverage import seed_from_committed_summary
 from backend.detector.targets import TRACKED_ASNS
 from db import store
 
-app = FastAPI(title="India BGP Hijack/Leak Monitor")
+app = FastAPI(title="India BGP Hijack Monitor")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # local demo project, no auth/sensitive data
